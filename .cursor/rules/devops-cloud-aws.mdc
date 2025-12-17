@@ -1,0 +1,10 @@
+## DEVOPS
+
+### Guidelines for CLOUD
+
+#### AWS
+
+- Use Infrastructure as Code (IaC) with AWS CDK or CloudFormation
+- Implement the principle of least privilege for IAM roles and policies
+- Use managed services when possible instead of maintaining your own infrastructure for {{service_types}}
+

@@ -1,0 +1,2 @@
+"""HomeBuild AI Assistant Backend"""
+
