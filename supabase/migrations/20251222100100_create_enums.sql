@@ -45,3 +45,4 @@ create type public.measurement_unit as enum (
 comment on type public.measurement_unit is 'User preference for measurement units in the application';
 
 
+

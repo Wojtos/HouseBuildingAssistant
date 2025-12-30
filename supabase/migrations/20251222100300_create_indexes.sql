@@ -118,3 +118,4 @@ comment on index public.idx_document_chunks_embedding is 'HNSW index for fast co
 -- the separate idx_document_chunks_project_id and query planner optimization
 
 
+

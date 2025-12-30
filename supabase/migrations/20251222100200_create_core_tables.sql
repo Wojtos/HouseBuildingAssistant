@@ -289,3 +289,4 @@ create trigger on_auth_user_created
     for each row execute function public.handle_new_user();
 
 
+
