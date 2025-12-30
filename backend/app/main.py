@@ -6,6 +6,7 @@ Main application entry point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.api import projects
 
 app = FastAPI(
     title=settings.api_title,
@@ -21,6 +22,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include API routers
+app.include_router(projects.router, prefix="/api")
 
 
 @app.get("/")

@@ -2,6 +2,8 @@
 Application configuration settings
 """
 
+from typing import Union
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -13,7 +15,7 @@ class Settings(BaseSettings):
     api_version: str = "0.1.0"
     
     # CORS Configuration
-    cors_origins: list[str] = ["http://localhost:4001"]
+    cors_origins: Union[list[str], str] = ["http://localhost:4001"]
     
     # Supabase Configuration
     supabase_url: str = ""
@@ -25,6 +27,15 @@ class Settings(BaseSettings):
     
     # Database Configuration
     database_url: str = ""
+    
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from string or list"""
+        if isinstance(v, str):
+            # Split by comma and strip whitespace
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
     
     class Config:
         env_file = ".env"
