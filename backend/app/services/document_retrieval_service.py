@@ -258,17 +258,18 @@ class DocumentRetrievalService:
         return similarity
 
 
-def get_document_retrieval_service(
-    supabase: Client,
-    ai_client: AIClient,
-) -> DocumentRetrievalService:
+def get_document_retrieval_service() -> DocumentRetrievalService:
     """
     Factory function for creating DocumentRetrievalService instances.
-    
+
     Used as a FastAPI dependency.
+    Note: Creates clients internally to avoid circular dependencies.
     """
+    from app.db import supabase_client
+    from app.clients.ai_client import get_ai_client
+
     return DocumentRetrievalService(
-        supabase=supabase,
-        ai_client=ai_client,
+        supabase=supabase_client,
+        ai_client=get_ai_client(),
     )
 
