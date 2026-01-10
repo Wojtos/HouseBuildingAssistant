@@ -1,5 +1,6 @@
 ---
 import ChatInterface from '../components/ChatInterface';
+import { ProtectedRoute } from '../components/ProtectedRoute';
 ---
 
 <html lang="en">
@@ -11,6 +12,8 @@ import ChatInterface from '../components/ChatInterface';
 		<title>HomeBuild AI Assistant</title>
 	</head>
 	<body>
-		<ChatInterface client:load />
+		<ProtectedRoute client:load>
+			<ChatInterface client:load />
+		</ProtectedRoute>
 	</body>
 </html>

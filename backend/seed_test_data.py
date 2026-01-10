@@ -18,6 +18,7 @@ SUPABASE_URL = "http://127.0.0.1:54321"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU"
 
 # Test IDs
+MOCK_USER_ID = "00000000-0000-0000-0000-000000000001"  # Mock auth user
 USER_ID = "550e8400-e29b-41d4-a716-446655440000"
 PROJECT_ID = "660e8400-e29b-41d4-a716-446655440000"
 DOCUMENT_ID = "770e8400-e29b-41d4-a716-446655440000"
@@ -32,6 +33,21 @@ def main():
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     try:
+        # 0. Insert mock user profile (for MOCK_AUTH mode)
+        print("\n0. Creating mock auth user profile...")
+        mock_profile_data = {
+            "id": MOCK_USER_ID,
+            "full_name": "Mock User (Dev)",
+            "preferred_units": "METRIC",
+            "language": "en",
+        }
+
+        try:
+            response = supabase.table("profiles").upsert(mock_profile_data).execute()
+            print(f"   ✅ Mock user profile created: {MOCK_USER_ID}")
+        except Exception as e:
+            print(f"   ⚠️  Mock profile: {e}")
+
         # 1. Insert test user profile
         print("\n1. Creating test user profile...")
         profile_data = {
@@ -132,6 +148,7 @@ def main():
 
         print("\n✅ Test data seeded successfully!")
         print(f"\n📋 Test IDs:")
+        print(f"   Mock User:   {MOCK_USER_ID} (for MOCK_AUTH=true)")
         print(f"   User ID:     {USER_ID}")
         print(f"   Project ID:  {PROJECT_ID}")
         print(f"   Document ID: {DOCUMENT_ID}")

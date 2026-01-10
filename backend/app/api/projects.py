@@ -15,6 +15,8 @@ from app.db import (
     ProjectUpdate,
     get_supabase,
 )
+from app.api.dependencies import get_current_user
+from app.schemas.project import ProjectCreateRequest, ProjectResponse
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -64,26 +66,37 @@ async def get_project(
     return response.data[0]
 
 
-@router.post("/", response_model=Project, status_code=201)
+@router.post("/", response_model=ProjectResponse, status_code=201)
 async def create_project(
-    project: ProjectInsert,
+    project_data: ProjectCreateRequest,
+    user_id: UUID = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
     """
     Create a new project.
     
+    The user_id is extracted from the JWT token in the Authorization header.
+    
     Example:
         POST /projects
+        Authorization: Bearer <jwt_token>
         {
-            "user_id": "123e4567-e89b-12d3-a456-426614174000",
             "name": "My Dream House",
             "location": "Warsaw, Poland",
             "current_phase": "LAND_SELECTION"
         }
     """
+    # Create ProjectInsert with user_id from auth token
+    project_insert = ProjectInsert(
+        user_id=user_id,
+        name=project_data.name,
+        location=project_data.location,
+        current_phase=project_data.current_phase,
+    )
+    
     response = (
         supabase.table("projects")
-        .insert(project.model_dump(mode="json"))
+        .insert(project_insert.model_dump(mode="json"))
         .execute()
     )
     

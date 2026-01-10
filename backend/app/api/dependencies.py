@@ -5,6 +5,7 @@ Reusable dependencies for authentication, authorization, and resource verificati
 """
 
 import logging
+import os
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Header
@@ -14,20 +15,26 @@ from app.db import get_supabase, Project
 
 logger = logging.getLogger(__name__)
 
+# Mock user ID for development (when MOCK_AUTH=true)
+MOCK_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
+
 
 async def get_current_user(
-    authorization: str = Header(None, description="Bearer token for authentication")
+    authorization: str = Header(None, description="Bearer token for authentication"),
+    supabase: Client = Depends(get_supabase)
 ) -> UUID:
     """
-    Extract and validate user ID from JWT token.
+    Extract and validate user ID from JWT token using Supabase Auth.
     
-    This is a simplified implementation. In production, this should:
-    1. Verify JWT signature using Supabase Auth
-    2. Check token expiration
-    3. Extract user_id from token claims
+    For development/testing, set MOCK_AUTH=true environment variable to bypass
+    authentication and use a mock user ID.
+    
+    This verifies the JWT token with Supabase and extracts the user_id from
+    the token claims.
     
     Args:
         authorization: Authorization header with Bearer token
+        supabase: Supabase client for auth verification
         
     Returns:
         User ID extracted from token
@@ -35,6 +42,12 @@ async def get_current_user(
     Raises:
         HTTPException: 401 if token is missing, invalid, or expired
     """
+    # DEVELOPMENT MODE: Mock authentication
+    if os.getenv("MOCK_AUTH", "").lower() == "true":
+        logger.warning(f"⚠️  MOCK AUTH ENABLED - Using mock user: {MOCK_USER_ID}")
+        return MOCK_USER_ID
+    
+    # PRODUCTION MODE: Real authentication
     if not authorization:
         raise HTTPException(
             status_code=401,
@@ -51,23 +64,28 @@ async def get_current_user(
     
     token = parts[1]
     
-    # TODO: Implement proper JWT validation using Supabase Auth
-    # For now, we'll use a placeholder that extracts user_id from token
-    # This should be replaced with actual Supabase JWT verification:
-    #
-    # try:
-    #     user = await supabase.auth.get_user(token)
-    #     return UUID(user.id)
-    # except Exception:
-    #     raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
     try:
-        # Placeholder: In development, accept any valid UUID as token
-        # WARNING: This is NOT secure and must be replaced with proper auth
-        user_id = UUID(token)
+        # Verify JWT token with Supabase and get user
+        user_response = supabase.auth.get_user(token)
+        
+        if not user_response or not user_response.user:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid or expired token"
+            )
+        
+        user_id = UUID(user_response.user.id)
         logger.debug(f"Authenticated user: {user_id}")
         return user_id
+        
     except ValueError:
+        # UUID conversion failed
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid user ID in token"
+        )
+    except Exception as e:
+        logger.error(f"Authentication error: {e}", exc_info=True)
         raise HTTPException(
             status_code=401,
             detail="Invalid or expired token"
