@@ -6,12 +6,15 @@ Reusable dependencies for authentication, authorization, and resource verificati
 
 import logging
 import os
+from typing import Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Header
 from supabase import Client
 
 from app.db import get_supabase, Project
+from app.clients.openrouter_service import OpenRouterService, get_openrouter_service as _get_openrouter_service
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -159,4 +162,29 @@ async def verify_project_ownership(
             status_code=500,
             detail="Internal server error"
         )
+
+
+# Singleton instance for OpenRouterService (reused across requests)
+_openrouter_service_instance: Optional[OpenRouterService] = None
+
+
+def get_openrouter_service() -> OpenRouterService:
+    """
+    Get OpenRouterService instance as a FastAPI dependency.
+    
+    Uses singleton pattern to reuse HTTP client across requests.
+    
+    Returns:
+        OpenRouterService instance
+    """
+    global _openrouter_service_instance
+    
+    if _openrouter_service_instance is None:
+        _openrouter_service_instance = _get_openrouter_service(settings=settings)
+        logger.info(
+            f"OpenRouterService initialized "
+            f"(mock_mode={_openrouter_service_instance.mock_mode})"
+        )
+    
+    return _openrouter_service_instance
 

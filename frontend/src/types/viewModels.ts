@@ -69,3 +69,75 @@ export interface CreateProjectFormVM {
   /** General submission error message */
   submitError: string | null;
 }
+
+// =============================================================================
+// PROJECT CHAT VIEW MODELS
+// =============================================================================
+
+/**
+ * Message status for optimistic/pending UI
+ */
+export type MessageStatus = 'sent' | 'pending' | 'failed';
+
+/**
+ * Chat message view model
+ * Represents a single message in the chat thread
+ */
+export interface ChatMessageVM {
+  /** UUID for persisted messages; `temp-...` for optimistic user messages */
+  id: string;
+  /** Role of message author */
+  role: 'user' | 'assistant';
+  /** Message content text */
+  content: string;
+  /** ISO8601 timestamp when message was created */
+  created_at: string;
+  /** ID of the agent that generated the response (assistant messages only) */
+  agent_id?: string | null;
+  /** Routing metadata with confidence and reasoning (assistant messages only) */
+  routing_metadata?: { confidence: number; reasoning: string } | null;
+  /** CSAT rating for this message (1-5, assistant messages only) */
+  csat_rating?: number | null;
+  /** Status for optimistic/pending UI */
+  status?: MessageStatus;
+}
+
+/**
+ * Chat composer view model
+ * Manages state for message input area
+ */
+export interface ChatComposerVM {
+  /** Current draft message content */
+  draft: string;
+  /** Whether a message is currently being sent */
+  isSending: boolean;
+  /** Validation error for draft message */
+  draftError?: string;
+}
+
+/**
+ * Chat pagination view model
+ * Manages pagination state for message history
+ */
+export interface ChatPaginationVM {
+  /** Whether initial message history is loading */
+  isLoadingInitial: boolean;
+  /** Whether older messages are being loaded */
+  isLoadingOlder: boolean;
+  /** Whether more older messages exist (derived from pagination) */
+  hasMoreOlder: boolean;
+  /** Timestamp of oldest message for pagination */
+  oldestTimestamp?: string;
+}
+
+/**
+ * API error view model for displaying errors
+ */
+export interface ApiErrorVM {
+  /** Error message to display */
+  message: string;
+  /** Whether the error is retryable */
+  isRetryable: boolean;
+  /** Action label for retry button */
+  retryLabel?: string;
+}

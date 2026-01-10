@@ -1,0 +1,88 @@
+---
+/**
+ * Project Chat Page
+ *
+ * Route: /projects/:projectId/chat
+ * Renders the ProjectChatView component for AI-powered chat assistance.
+ */
+
+import { ProjectChatView } from '../../../components/chat/ProjectChatView';
+
+// Enable server-side rendering for this dynamic route
+export const prerender = false;
+
+const { projectId } = Astro.params;
+
+// Validate projectId parameter
+if (!projectId) {
+  return Astro.redirect('/projects');
+}
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Chat with AI assistant about your building project"
+    />
+    <title>Project Chat - House Building Assistant</title>
+  </head>
+  <body class="h-screen overflow-hidden bg-gray-50">
+    <div class="flex h-full flex-col">
+      <!-- Header -->
+      <header class="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div class="flex items-center gap-4">
+          <a
+            href="/projects"
+            class="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <svg
+              class="mr-2 h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+            Projects
+          </a>
+          <span class="text-gray-300">|</span>
+          <h1 class="text-lg font-semibold text-gray-900">Project Chat</h1>
+        </div>
+        <nav class="flex items-center gap-4">
+          <a
+            href={`/projects/${projectId}/files`}
+            class="text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            Files
+          </a>
+          <a
+            href={`/projects/${projectId}/facts`}
+            class="text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            Facts
+          </a>
+          <a
+            href={`/projects/${projectId}/settings`}
+            class="text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            Settings
+          </a>
+        </nav>
+      </header>
+
+      <!-- Main content -->
+      <main class="flex-1 overflow-hidden">
+        <ProjectChatView client:load projectId={projectId} />
+      </main>
+    </div>
+  </body>
+</html>

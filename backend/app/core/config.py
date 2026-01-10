@@ -21,9 +21,28 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_key: str = ""
     
-    # OpenRouter Configuration
+    # OpenRouter Configuration - Core
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    
+    # OpenRouter Configuration - Model Defaults
+    openrouter_default_chat_model: str = "openai/gpt-4o-mini"
+    openrouter_routing_model: str = "openai/gpt-4o-mini"
+    openrouter_default_embedding_model: str = "openai/text-embedding-3-small"
+    
+    # OpenRouter Configuration - Request Defaults
+    openrouter_default_temperature: float = 0.7
+    openrouter_default_max_tokens: int = 1024
+    
+    # OpenRouter Configuration - Operational Limits
+    openrouter_timeout_seconds: int = 30
+    openrouter_max_retries: int = 2
+    openrouter_max_prompt_chars: int = 100000
+    openrouter_max_messages: int = 50
+    
+    # OpenRouter Configuration - App Identity (for OpenRouter headers)
+    openrouter_app_url: str = "https://homebuild-assistant.local"
+    openrouter_app_name: str = "HomeBuild AI Assistant"
     
     # Database Configuration
     database_url: str = ""
@@ -36,6 +55,14 @@ class Settings(BaseSettings):
             # Split by comma and strip whitespace
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
+    
+    @property
+    def is_openrouter_configured(self) -> bool:
+        """Check if OpenRouter API key is properly configured."""
+        return bool(
+            self.openrouter_api_key 
+            and self.openrouter_api_key != "your-openrouter-api-key-here"
+        )
     
     class Config:
         env_file = ".env"

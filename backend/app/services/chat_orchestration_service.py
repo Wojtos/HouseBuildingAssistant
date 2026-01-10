@@ -12,17 +12,82 @@ Handles the complex multi-stage workflow for processing chat messages:
 
 import logging
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Literal, Optional, Union
 from uuid import UUID
 
+from pydantic import BaseModel, Field
+
+from app.clients.openrouter_service import (
+    OpenRouterService,
+    OpenRouterError,
+)
 from app.clients.ai_client import AIClient, AIServiceError
 from app.db.models import Message
 from app.schemas.message import MessageRole, ChatResponse, RoutingMetadata
+from app.schemas.openrouter import ModelParams
 from app.services.message_service import MessageService
 from app.services.document_retrieval_service import DocumentRetrievalService, DocumentChunk
 from app.services.project_memory_service import ProjectMemoryService
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Routing Schema for Structured Output
+# ============================================================================
+
+VALID_AGENTS = [
+    "LAND_FEASIBILITY_AGENT",
+    "REGULATORY_PERMITTING_AGENT",
+    "ARCHITECTURAL_DESIGN_AGENT",
+    "FINANCE_LEGAL_AGENT",
+    "SITE_PREP_FOUNDATION_AGENT",
+    "SHELL_SYSTEMS_AGENT",
+    "PROCUREMENT_QUALITY_AGENT",
+    "FINISHES_FURNISHING_AGENT",
+    "TRIAGE_MEMORY_AGENT",
+]
+
+AgentId = Literal[
+    "LAND_FEASIBILITY_AGENT",
+    "REGULATORY_PERMITTING_AGENT",
+    "ARCHITECTURAL_DESIGN_AGENT",
+    "FINANCE_LEGAL_AGENT",
+    "SITE_PREP_FOUNDATION_AGENT",
+    "SHELL_SYSTEMS_AGENT",
+    "PROCUREMENT_QUALITY_AGENT",
+    "FINISHES_FURNISHING_AGENT",
+    "TRIAGE_MEMORY_AGENT",
+]
+
+
+class AgentRoutingResponse(BaseModel):
+    """Structured response from the routing agent."""
+    
+    agent_id: AgentId = Field(..., description="Selected agent identifier")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence score (0-1)")
+    reasoning: str = Field(..., description="Brief explanation of routing decision")
+
+
+AGENT_ROUTING_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "agent_id": {
+            "type": "string",
+            "enum": VALID_AGENTS,
+        },
+        "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+        },
+        "reasoning": {
+            "type": "string",
+        },
+    },
+    "required": ["agent_id", "confidence", "reasoning"],
+}
 
 
 class ChatOrchestrationService:
@@ -35,24 +100,29 @@ class ChatOrchestrationService:
     
     def __init__(
         self,
-        ai_client: AIClient,
+        openrouter_service: OpenRouterService,
         message_service: MessageService,
         document_service: Optional[DocumentRetrievalService] = None,
         memory_service: Optional[ProjectMemoryService] = None,
+        # Legacy support for AIClient
+        ai_client: Optional[AIClient] = None,
     ):
         """
         Initialize chat orchestration service.
         
         Args:
-            ai_client: AI client for LLM calls
+            openrouter_service: OpenRouter service for LLM calls
             message_service: Service for message persistence
             document_service: Optional document retrieval service for RAG
             memory_service: Optional project memory service for RAG
+            ai_client: Legacy AI client (deprecated, use openrouter_service)
         """
-        self.ai_client = ai_client
+        self.openrouter_service = openrouter_service
         self.message_service = message_service
         self.document_service = document_service
         self.memory_service = memory_service
+        # Keep legacy ai_client for backward compatibility (if needed)
+        self.ai_client = ai_client
     
     async def process_chat(
         self,
@@ -136,7 +206,7 @@ class ChatOrchestrationService:
             
             return response
         
-        except AIServiceError:
+        except (AIServiceError, OpenRouterError):
             # Re-raise AI service errors
             raise
         
@@ -255,7 +325,7 @@ class ChatOrchestrationService:
         """
         Route the message to appropriate specialized agent.
         
-        Uses a triage agent (LLM call) to determine routing.
+        Uses structured JSON output for reliable routing.
         
         Returns:
             Tuple of (agent_id, confidence, reasoning)
@@ -277,53 +347,37 @@ Available agents:
 - FINISHES_FURNISHING_AGENT: Interior finishes, fixtures, furnishing
 - TRIAGE_MEMORY_AGENT: General queries, greetings, summaries
 
-Respond with ONLY the agent name, nothing else."""
-        
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Route this query: {user_message}"},
-        ]
+Analyze the query and select the most appropriate agent. Provide your confidence level and reasoning."""
         
         try:
-            # Call AI for routing decision
-            response = await self.ai_client.chat_completion(
-                messages=messages,
-                model="openai/gpt-3.5-turbo",
-                temperature=0.3,
-                max_tokens=50,
+            # Use structured JSON output for reliable routing
+            routing_params = ModelParams(temperature=0.0, max_tokens=150)
+            
+            routing_result, _ = await self.openrouter_service.chat_completion_json(
+                user_message=f"Route this query: {user_message}",
+                system_message=system_prompt,
+                schema_name="agent_routing",
+                schema=AGENT_ROUTING_SCHEMA,
+                output_model=AgentRoutingResponse,
+                params=routing_params,
             )
             
-            agent_id = response["content"].strip()
-            
-            # Validate agent_id
-            valid_agents = [
-                "LAND_FEASIBILITY_AGENT",
-                "REGULATORY_PERMITTING_AGENT",
-                "ARCHITECTURAL_DESIGN_AGENT",
-                "FINANCE_LEGAL_AGENT",
-                "SITE_PREP_FOUNDATION_AGENT",
-                "SHELL_SYSTEMS_AGENT",
-                "PROCUREMENT_QUALITY_AGENT",
-                "FINISHES_FURNISHING_AGENT",
-                "TRIAGE_MEMORY_AGENT",
-            ]
-            
-            if agent_id not in valid_agents:
-                logger.warning(f"Invalid agent_id returned: {agent_id}, using TRIAGE")
-                agent_id = "TRIAGE_MEMORY_AGENT"
-            
-            # Simple confidence based on query clarity (mock for now)
-            confidence = 0.85 if len(user_message.split()) > 5 else 0.70
-            reasoning = f"Query routed to {agent_id} based on content analysis"
+            agent_id = routing_result.agent_id
+            confidence = routing_result.confidence
+            reasoning = routing_result.reasoning
             
             logger.info(f"Routed to {agent_id} (confidence: {confidence:.2f})")
             
             return agent_id, confidence, reasoning
         
-        except AIServiceError as e:
+        except OpenRouterError as e:
             logger.error(f"Error in agent routing: {e}")
             # Fallback to general agent
             return "TRIAGE_MEMORY_AGENT", 0.50, "Fallback routing due to service error"
+        
+        except Exception as e:
+            logger.error(f"Unexpected error in agent routing: {e}")
+            return "TRIAGE_MEMORY_AGENT", 0.50, "Fallback routing due to unexpected error"
     
     async def _execute_agent(
         self,
@@ -350,7 +404,7 @@ Respond with ONLY the agent name, nothing else."""
         logger.debug(f"Executing {agent_id} with full RAG context")
         
         # Build agent-specific system prompt
-        system_prompt = self._get_agent_prompt(agent_id)
+        base_prompt = self._get_agent_prompt(agent_id)
         
         # Build enriched context from RAG
         context_parts = []
@@ -373,38 +427,28 @@ Respond with ONLY the agent name, nothing else."""
             if history_str:
                 context_parts.append(f"=== RECENT CONVERSATION ===\n{history_str}")
         
-        # Build messages for AI
-        messages = [
-            {"role": "system", "content": system_prompt},
-        ]
-        
-        # Add enriched context as system message
+        # Combine base prompt with context
         if context_parts:
             combined_context = "\n\n".join(context_parts)
-            messages.append({
-                "role": "system",
-                "content": f"Context for this query:\n\n{combined_context}"
-            })
+            system_message = f"{base_prompt}\n\nContext for this query:\n\n{combined_context}"
             
             logger.debug(
                 f"Added RAG context: {len(context_parts)} sections, "
                 f"{len(combined_context)} characters"
             )
-        
-        # Add user query
-        messages.append({"role": "user", "content": user_message})
+        else:
+            system_message = base_prompt
         
         try:
-            # Call AI for agent response
-            response = await self.ai_client.chat_completion(
-                messages=messages,
-                model="openai/gpt-4-turbo",
-                temperature=0.7,
+            # Call OpenRouterService for agent response
+            result = await self.openrouter_service.chat_completion(
+                user_message=user_message,
+                system_message=system_message,
             )
             
-            return response["content"]
+            return result.content
         
-        except AIServiceError as e:
+        except OpenRouterError as e:
             logger.error(f"Error executing agent {agent_id}: {e}")
             raise
     
@@ -522,7 +566,7 @@ Be friendly and guide users to more specific questions when appropriate.""",
 
 
 def get_chat_orchestration_service(
-    ai_client: AIClient,
+    openrouter_service: OpenRouterService,
     message_service: MessageService,
     document_service: Optional[DocumentRetrievalService] = None,
     memory_service: Optional[ProjectMemoryService] = None,
@@ -531,9 +575,18 @@ def get_chat_orchestration_service(
     Factory function for creating ChatOrchestrationService instances.
     
     Used as a FastAPI dependency.
+    
+    Args:
+        openrouter_service: OpenRouter service for LLM calls
+        message_service: Service for message persistence
+        document_service: Optional document retrieval service for RAG
+        memory_service: Optional project memory service for RAG
+        
+    Returns:
+        ChatOrchestrationService instance
     """
     return ChatOrchestrationService(
-        ai_client=ai_client,
+        openrouter_service=openrouter_service,
         message_service=message_service,
         document_service=document_service,
         memory_service=memory_service,

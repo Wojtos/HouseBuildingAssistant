@@ -16,8 +16,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from supabase import Client
 
-from app.api.dependencies import get_current_user, verify_project_ownership
-from app.clients.ai_client import AIClient, AIServiceError, get_ai_client
+from app.api.dependencies import get_current_user, verify_project_ownership, get_openrouter_service
+from app.clients.ai_client import AIServiceError
+from app.clients.openrouter_service import OpenRouterService, OpenRouterError
 from app.db import Project, get_supabase
 from app.schemas.common import PaginationInfo
 from app.schemas.message import (
@@ -170,7 +171,7 @@ async def send_message(
     request: ChatRequest,
     user_id: UUID = Depends(get_current_user),
     project: Project = Depends(verify_project_ownership),
-    ai_client: AIClient = Depends(get_ai_client),
+    openrouter_service: OpenRouterService = Depends(get_openrouter_service),
     message_service: MessageService = Depends(get_message_service),
     supabase: Client = Depends(get_supabase),
 ):
@@ -199,7 +200,7 @@ async def send_message(
     
     **Constraints:**
     - Maximum content length: 4000 characters
-    - Maximum response time: 10 seconds
+    - Maximum response time: 30 seconds
     
     **Example:**
     ```
@@ -211,25 +212,25 @@ async def send_message(
     """
     try:
         # Initialize RAG services
-        document_service = get_document_retrieval_service(supabase, ai_client)
+        document_service = get_document_retrieval_service()
         memory_service = get_project_memory_service(supabase)
         
-        # Create orchestration service with RAG support
+        # Create orchestration service with OpenRouterService
         chat_service = get_chat_orchestration_service(
-            ai_client=ai_client,
+            openrouter_service=openrouter_service,
             message_service=message_service,
             document_service=document_service,
             memory_service=memory_service,
         )
         
-        # Process chat with timeout (10 seconds max)
+        # Process chat with timeout (30 seconds max to allow for retries)
         response = await asyncio.wait_for(
             chat_service.process_chat(
                 project_id=project_id,
                 user_id=user_id,
                 content=request.content,
             ),
-            timeout=10.0,
+            timeout=30.0,
         )
         
         logger.info(
@@ -246,7 +247,7 @@ async def send_message(
             detail="AI service timeout, please try again",
         )
     
-    except AIServiceError as e:
+    except (AIServiceError, OpenRouterError) as e:
         logger.error(f"AI service error: {e}", exc_info=True)
         raise HTTPException(
             status_code=503,
