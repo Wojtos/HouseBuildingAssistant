@@ -1,4 +1,4 @@
-.PHONY: help install dev build up down clean logs backend frontend test
+.PHONY: help install dev build up down stop clean logs backend frontend test
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -23,6 +23,9 @@ up: ## Start services without rebuilding
 
 down: ## Stop and remove containers
 	docker-compose down
+
+stop: ## Stop running containers without removing them
+	docker-compose stop
 
 clean: ## Remove containers, volumes, and images
 	docker-compose down -v --rmi all

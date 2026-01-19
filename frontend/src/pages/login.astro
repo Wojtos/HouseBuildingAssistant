@@ -1,16 +1,39 @@
 ---
+/**
+ * Login Page
+ * 
+ * Public page for user sign in.
+ * Uses AuthLayout and mounts AuthForm React island.
+ * Redirects to /projects if user is already authenticated.
+ */
+export const prerender = false;
+
+import AuthLayout from '../layouts/AuthLayout.astro';
 import { AuthForm } from '../components/AuthForm';
+import { createSupabaseServerInstance } from '../db/supabase.server';
+
+// Check if user is already authenticated
+const supabase = createSupabaseServerInstance({
+  cookies: Astro.cookies,
+  headers: Astro.request.headers,
+});
+
+const { data: { user } } = await supabase.auth.getUser();
+
+// If authenticated, redirect to projects or the requested redirect target
+if (user) {
+  const redirectTo = Astro.url.searchParams.get('redirectTo');
+  // Validate redirect target is safe (relative path, no protocol)
+  const safeRedirect = redirectTo && redirectTo.startsWith('/') && !redirectTo.includes('//')
+    ? redirectTo
+    : '/projects';
+  return Astro.redirect(safeRedirect, 302);
+}
 ---
 
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Sign in to your House Building Assistant account" />
-    <title>Sign In - House Building Assistant</title>
-  </head>
-  <body>
-    <AuthForm client:load mode="login" />
-  </body>
-</html>
+<AuthLayout 
+  title="Sign In - House Building Assistant"
+  description="Sign in to your House Building Assistant account"
+>
+  <AuthForm client:load mode="login" />
+</AuthLayout>

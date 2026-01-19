@@ -1,15 +1,19 @@
 ---
 /**
- * Project Chat Page
+ * Project Chat Page - Protected Route
  *
  * Route: /projects/:projectId/chat
  * Renders the ProjectChatView component for AI-powered chat assistance.
+ * 
+ * Access to this page is protected by server-side middleware.
+ * Unauthenticated users are redirected to /login before this page renders.
  */
 
 import { ProjectChatView } from '../../../components/chat/ProjectChatView';
+import { LogoutButton } from '../../../components/LogoutButton';
 
-// Enable server-side rendering for this dynamic route
-export const prerender = false;
+// User is guaranteed to exist here - middleware redirects unauthenticated users
+const { user } = Astro.locals;
 
 const { projectId } = Astro.params;
 
@@ -76,6 +80,11 @@ if (!projectId) {
           >
             Settings
           </a>
+          <span class="text-gray-300">|</span>
+          <LogoutButton 
+            client:load 
+            className="text-sm font-medium text-gray-600 hover:text-gray-900"
+          />
         </nav>
       </header>
 

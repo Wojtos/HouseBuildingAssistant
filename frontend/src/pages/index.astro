@@ -1,6 +1,18 @@
 ---
+/**
+ * Home Page - Protected Route
+ * 
+ * Access to this page is protected by server-side middleware.
+ * Unauthenticated users are redirected to /login before this page renders.
+ * 
+ * The Astro.locals.user is populated by middleware and contains:
+ * - id: Supabase user ID
+ * - email: User's email address
+ */
 import ChatInterface from '../components/ChatInterface';
-import { ProtectedRoute } from '../components/ProtectedRoute';
+
+// User is guaranteed to exist here - middleware redirects unauthenticated users
+const { user } = Astro.locals;
 ---
 
 <html lang="en">
@@ -12,8 +24,6 @@ import { ProtectedRoute } from '../components/ProtectedRoute';
 		<title>HomeBuild AI Assistant</title>
 	</head>
 	<body>
-		<ProtectedRoute client:load>
-			<ChatInterface client:load />
-		</ProtectedRoute>
+		<ChatInterface client:load />
 	</body>
 </html>

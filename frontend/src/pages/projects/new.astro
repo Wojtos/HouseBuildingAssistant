@@ -1,5 +1,14 @@
 ---
+/**
+ * Create New Project Page - Protected Route
+ * 
+ * Access to this page is protected by server-side middleware.
+ * Unauthenticated users are redirected to /login before this page renders.
+ */
 import { CreateProjectView } from '../../components/CreateProjectView';
+
+// User is guaranteed to exist here - middleware redirects unauthenticated users
+const { user } = Astro.locals;
 ---
 
 <!DOCTYPE html>

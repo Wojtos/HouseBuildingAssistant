@@ -2,7 +2,12 @@
  * ProtectedRoute Component
  * 
  * Client-side authentication check that runs in the browser.
- * Redirects to login if user is not authenticated.
+ * Acts as a secondary safety net for protected content.
+ * 
+ * Primary protection is handled server-side by Astro middleware.
+ * This component handles:
+ * - Hydration edge cases (stale tabs, expired sessions after SSR)
+ * - Routes that are intentionally client-only
  */
 
 import { useEffect, useState } from 'react';
@@ -29,10 +34,6 @@ export function ProtectedRoute({
 
   useEffect(() => {
     const checkAuth = async () => {
-        setAuthenticated(true);
-        setAuthChecked(true);
-      return;
-      // disable temporarily
       const isAuth = await isAuthenticated();
       
       if (!isAuth) {

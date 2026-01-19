@@ -6,6 +6,7 @@ import node from '@astrojs/node';
 
 // https://astro.build/config
 export default defineConfig({
+  output: 'server', // Required for middleware to run on all routes
   adapter: node({
     mode: 'standalone',
   }),
