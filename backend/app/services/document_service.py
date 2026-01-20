@@ -165,9 +165,23 @@ class DocumentService:
             Exception: If record creation or URL generation fails
         """
         try:
-            # Generate storage path
+            # Generate storage path with sanitized filename
+            # Remove/replace special characters to avoid URL encoding issues with signed URLs
+            import unicodedata
+            import re
+            
+            # Normalize unicode and remove diacritics
+            sanitized_name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
+            # Replace spaces with underscores and remove other non-alphanumeric chars except dots and underscores
+            sanitized_name = re.sub(r'[^\w\-_\.]', '_', sanitized_name)
+            # Remove consecutive underscores
+            sanitized_name = re.sub(r'_+', '_', sanitized_name).strip('_')
+            # Ensure we have a valid filename
+            if not sanitized_name:
+                sanitized_name = 'document'
+            
             timestamp = datetime.utcnow().isoformat().replace(":", "-")
-            storage_path = f"{project_id}/{timestamp}_{name}"
+            storage_path = f"{project_id}/{timestamp}_{sanitized_name}"
 
             # Create document record with UPLOADED state
             # (In the plan, PENDING_UPLOAD is API-only state)
@@ -194,11 +208,27 @@ class DocumentService:
             expiry_seconds = PRESIGNED_URL_EXPIRY_MINUTES * 60
 
             # Create presigned URL for upload
-            presigned_url = self.supabase.storage.from_(STORAGE_BUCKET).create_signed_upload_url(
+            presigned_response = self.supabase.storage.from_(STORAGE_BUCKET).create_signed_upload_url(
                 storage_path
             )
 
-            upload_url = presigned_url.get("signedURL") if isinstance(presigned_url, dict) else presigned_url
+            # Handle different response types from the SDK
+            if hasattr(presigned_response, 'signed_url'):
+                # SDK returns object with signed_url attribute
+                upload_url = presigned_response.signed_url
+            elif isinstance(presigned_response, dict):
+                # SDK returns dict (older versions)
+                upload_url = presigned_response.get("signedURL") or presigned_response.get("signed_url") or presigned_response.get("signedUrl")
+            else:
+                upload_url = str(presigned_response)
+            
+            # Replace Docker internal hostname with localhost for browser access
+            if upload_url:
+                if "host.docker.internal" in upload_url:
+                    upload_url = upload_url.replace("host.docker.internal", "localhost")
+                # Fix double slash in path (e.g., /v1//object/ -> /v1/object/)
+                upload_url = upload_url.replace("/v1//object/", "/v1/object/")
+            
             expires_at = datetime.utcnow() + timedelta(minutes=PRESIGNED_URL_EXPIRY_MINUTES)
 
             logger.info(
@@ -261,13 +291,23 @@ class DocumentService:
             storage_path = doc["storage_path"]
 
             # Verify file exists in storage
+            # list() expects a directory path, so we need to split the storage_path
             try:
-                file_info = self.supabase.storage.from_(STORAGE_BUCKET).list(
-                    path=storage_path
-                )
-                if not file_info:
+                import os
+                dir_path = os.path.dirname(storage_path)
+                file_name = os.path.basename(storage_path)
+                
+                file_list = self.supabase.storage.from_(STORAGE_BUCKET).list(path=dir_path)
+                
+                # Check if the file exists in the listing
+                file_exists = any(f.get('name') == file_name for f in file_list) if file_list else False
+                
+                if not file_exists:
+                    logger.warning(f"File not found. Looking for '{file_name}' in '{dir_path}'. Found: {[f.get('name') for f in (file_list or [])]}")
                     raise Exception(f"File not found in storage: {storage_path}")
             except Exception as e:
+                if "File not found in storage" in str(e):
+                    raise
                 logger.error(f"Storage verification failed: {e}")
                 raise Exception("File not found in storage. Please upload the file first.")
 

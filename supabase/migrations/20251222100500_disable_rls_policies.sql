@@ -1,11 +1,10 @@
 -- migration: disable_rls_policies
--- description: Drop all Row Level Security policies created in 20251222100400_enable_rls_policies
+-- description: Drop all Row Level Security policies and disable RLS on tables for local development
 -- affected: all tables with RLS policies
 -- dependencies: 20251222100400_enable_rls_policies
 --
--- This migration removes all RLS policies to disable access restrictions.
--- Tables will still have RLS enabled, but without policies no access will be granted
--- (except for service role which bypasses RLS).
+-- This migration removes all RLS policies AND disables RLS on tables entirely
+-- for local development purposes.
 
 -- =============================================================================
 -- DROP PROFILES TABLE POLICIES
@@ -80,4 +79,18 @@ drop policy if exists "authenticated users can update routing audits for their p
 
 drop policy if exists "authenticated users can select their own usage logs" on public.usage_logs;
 drop policy if exists "authenticated users can insert their own usage logs" on public.usage_logs;
+
+-- =============================================================================
+-- DISABLE RLS ON ALL TABLES FOR LOCAL DEVELOPMENT
+-- =============================================================================
+
+alter table public.profiles disable row level security;
+alter table public.projects disable row level security;
+alter table public.project_memory disable row level security;
+alter table public.documents disable row level security;
+alter table public.document_chunks disable row level security;
+alter table public.messages disable row level security;
+alter table public.memory_audit_trail disable row level security;
+alter table public.routing_audits disable row level security;
+alter table public.usage_logs disable row level security;
 

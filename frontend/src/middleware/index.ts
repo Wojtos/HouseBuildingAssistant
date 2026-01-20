@@ -13,12 +13,16 @@ import { createSupabaseServerInstance } from '../db/supabase.server';
 
 /**
  * Paths that don't require authentication
- * Includes auth pages and auth API endpoints
+ * Includes auth pages, auth API endpoints, and error pages
  */
 const PUBLIC_PATHS = [
   // Auth pages (server-rendered)
   '/login',
   '/signup',
+  // Error/recovery pages
+  '/403',
+  '/404',
+  '/offline',
   // Auth API endpoints
   '/api/auth/login',
   '/api/auth/register',

@@ -2,28 +2,12 @@
 /**
  * Home Page - Protected Route
  * 
+ * Redirects authenticated users to the projects list.
+ * 
  * Access to this page is protected by server-side middleware.
  * Unauthenticated users are redirected to /login before this page renders.
- * 
- * The Astro.locals.user is populated by middleware and contains:
- * - id: Supabase user ID
- * - email: User's email address
  */
-import ChatInterface from '../components/ChatInterface';
 
-// User is guaranteed to exist here - middleware redirects unauthenticated users
-const { user } = Astro.locals;
+// Redirect to projects list
+return Astro.redirect('/projects');
 ---
-
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>HomeBuild AI Assistant</title>
-	</head>
-	<body>
-		<ChatInterface client:load />
-	</body>
-</html>

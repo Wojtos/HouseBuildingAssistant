@@ -1,0 +1,33 @@
+---
+/**
+ * Document Detail Page - Protected Route
+ *
+ * Route: /projects/:projectId/files/:documentId
+ * Renders the DocumentDetailView component for viewing document details.
+ * 
+ * Access to this page is protected by server-side middleware.
+ * Unauthenticated users are redirected to /login before this page renders.
+ */
+
+import ProjectLayout from '../../../../layouts/ProjectLayout.astro';
+import { DocumentDetailView } from '../../../../components/DocumentDetailView';
+
+// User is guaranteed to exist here - middleware redirects unauthenticated users
+const { user } = Astro.locals;
+
+const { projectId, documentId } = Astro.params;
+
+// Validate parameters
+if (!projectId || !documentId) {
+  return Astro.redirect('/projects');
+}
+---
+
+<ProjectLayout
+  title="Document Details - House Building Assistant"
+  description="View document details and extracted content"
+  projectId={projectId}
+  activeNavKey="files"
+>
+  <DocumentDetailView client:load projectId={projectId} documentId={documentId} />
+</ProjectLayout>

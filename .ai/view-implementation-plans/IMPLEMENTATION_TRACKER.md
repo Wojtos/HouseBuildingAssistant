@@ -9,17 +9,17 @@ This document tracks the order, status, and dependencies for implementing all vi
 
 | # | View | Status | Dependencies | Priority | Notes |
 |---|------|--------|--------------|----------|-------|
-| 1 | **Auth** (Sign in / Sign up) | 🟡 In Progress | None | **Critical** | Basic UI complete, needs integration testing |
-| 2 | **Error Recovery** (403, 404, Offline) | 🔴 Not Started | None | **Critical** | Used by all views for error handling |
+| 1 | **Auth** (Sign in / Sign up) | 🟢 Completed | None | **Critical** | Full implementation: login/signup pages, AuthForm, API endpoints, middleware, hooks |
+| 2 | **Error Recovery** (403, 404, Offline) | 🟢 Completed | None | **Critical** | ErrorView component, 403/404/offline pages, safe returnTo validation, middleware integration |
 
 ### Phase 2: Project Management (Core)
 **Goal**: Enable project creation and navigation.
 
 | # | View | Status | Dependencies | Priority | Notes |
 |---|------|--------|--------------|----------|-------|
-| 3 | **Projects List** | 🔴 Not Started | Auth (#1) | **Critical** | First post-login destination |
+| 3 | **Projects List** | 🟢 Completed | Auth (#1) | **Critical** | ProjectsListView with filters, pagination, empty state, responsive design |
 | 4 | **Create Project** | 🟢 Completed | Auth (#1), Projects List (#3) | **Critical** | Needed before accessing project-scoped views |
-| 5 | **Project Shell** (Layout Wrapper) | 🔴 Not Started | Auth (#1), Projects List (#3) | **Critical** | Required wrapper for all project-scoped routes |
+| 5 | **Project Shell** (Layout Wrapper) | 🟢 Completed | Auth (#1), Projects List (#3) | **Critical** | ProjectShell with navigation, phase picker, ProjectLayout.astro |
 
 ### Phase 3: Core Features (MVP Critical)
 **Goal**: Enable primary user interactions and document management.
@@ -27,24 +27,24 @@ This document tracks the order, status, and dependencies for implementing all vi
 | # | View | Status | Dependencies | Priority | Notes |
 |---|------|--------|--------------|----------|-------|
 | 6 | **Project Chat** | 🟢 Completed | Project Shell (#5) | **Critical** | Primary user interaction surface |
-| 7 | **Project Files** (Document List + Upload) | 🔴 Not Started | Project Shell (#5) | **Critical** | Required for RAG/document context |
-| 8 | **Document Detail** | 🔴 Not Started | Project Shell (#5), Project Files (#7) | **High** | View individual documents and chunks |
+| 7 | **Project Files** (Document List + Upload) | 🟢 Completed | Project Shell (#5) | **Critical** | ProjectFilesView, DocumentUploader, useDocumentsList/useDocumentUpload/useDeleteDocument hooks |
+| 8 | **Document Detail** | 🟢 Completed | Project Shell (#5), Project Files (#7) | **High** | DocumentDetailView with chunk browser, polling, deep links, useDocument/useDocumentChunks hooks |
 
 ### Phase 4: Enhanced Features
 **Goal**: Add advanced functionality for better user experience.
 
 | # | View | Status | Dependencies | Priority | Notes |
 |---|------|--------|--------------|----------|-------|
-| 9 | **Document Search** (Semantic Search) | 🔴 Not Started | Project Shell (#5), Project Files (#7) | **High** | Enables finding facts across documents |
-| 10 | **Project Facts** (Memory Viewer) | 🔴 Not Started | Project Shell (#5) | **High** | Shows structured project memory |
-| 11 | **Project Settings** | 🔴 Not Started | Project Shell (#5) | **Medium** | Project metadata management |
+| 9 | **Document Search** (Semantic Search) | 🟢 Completed | Project Shell (#5), Project Files (#7) | **High** | DocumentSearchView with SearchResultCard, useDocumentSearch hook, advanced options |
+| 10 | **Project Facts** (Memory Viewer) | 🟢 Completed | Project Shell (#5) | **High** | ProjectFactsView, FactsViewer accordion, useProjectMemory hook, SuggestCorrectionButton |
+| 11 | **Project Settings** | 🟢 Completed | Project Shell (#5) | **Medium** | ProjectSettingsView, DangerZone, useDeleteProject hook, form validation |
 
 ### Phase 5: Polish
 **Goal**: User account management and preferences.
 
 | # | View | Status | Dependencies | Priority | Notes |
 |---|------|--------|--------------|----------|-------|
-| 12 | **Account Settings** | 🔴 Not Started | Auth (#1) | **Medium** | User profile preferences |
+| 12 | **Account Settings** | 🟢 Completed | Auth (#1) | **Medium** | AccountSettingsView with profile form, useProfile hook, validation, dirty state tracking |
 
 ---
 
@@ -146,17 +146,17 @@ Ensure backend endpoints are ready before implementing dependent views:
 
 ### Overall Progress
 - **Total Views**: 12
-- **Completed**: 2
-- **In Progress**: 1
-- **Not Started**: 9
-- **Completion**: 17% (25% including in-progress)
+- **Completed**: 12
+- **In Progress**: 0
+- **Not Started**: 0
+- **Completion**: 100% 🎉
 
 ### Phase Progress
-- **Phase 1**: 0/2 complete, 1/2 in progress (50% in progress)
-- **Phase 2**: 1/3 (33%)
-- **Phase 3**: 1/3 (33%)
-- **Phase 4**: 0/3 (0%)
-- **Phase 5**: 0/1 (0%)
+- **Phase 1**: 2/2 (100%) - Auth and Error Recovery complete
+- **Phase 2**: 3/3 (100%) - Projects List, Create Project, Project Shell complete
+- **Phase 3**: 3/3 (100%) - Project Chat, Project Files, and Document Detail complete
+- **Phase 4**: 3/3 (100%) - Document Search, Project Facts, and Project Settings complete
+- **Phase 5**: 1/1 (100%) - Account Settings complete
 
 ---
 
@@ -183,9 +183,9 @@ Ensure backend endpoints are ready before implementing dependent views:
 ---
 
 ## Last Updated
-**Date**: 2026-01-10
+**Date**: 2026-01-20
 **Updated By**: Claude (Cursor AI)
-**Version**: 1.3
+**Version**: 1.7
 
 ---
 
@@ -193,8 +193,18 @@ Ensure backend endpoints are ready before implementing dependent views:
 
 | Date | View | Change | Notes |
 |------|------|--------|-------|
+| 2026-01-20 | Account Settings | ✅ Implementation completed | AccountSettingsView, useProfile hook, profile form with validation, dirty state tracking |
+| 2026-01-20 | Document Search | ✅ Implementation completed | DocumentSearchView, SearchResultCard, useDocumentSearch hook, advanced options (limit/threshold) |
+| 2026-01-20 | Document Detail | ✅ Implementation completed | Enhanced DocumentDetailView with ChunkBrowser, ChunkDetailModal, useDocument with polling, useDocumentChunks, deep link support |
+| 2026-01-20 | Project Settings | ✅ Implementation completed | ProjectSettingsView, DangerZone, useDeleteProject hook, form validation, delete confirmation dialog |
+| 2026-01-20 | Project Facts | ✅ Implementation completed | ProjectFactsView, FactsViewer accordion, useProjectMemory hook, domain parsing, SuggestCorrectionButton |
+| 2026-01-20 | Project Files | ✅ Implementation completed | ProjectFilesView, DocumentUploader, useDocumentsList/useDocumentUpload/useDeleteDocument hooks, filters, pagination |
+| 2026-01-20 | Projects List | ✅ Implementation completed | ProjectsListView, useProjectsList hook, PaginationControls, FiltersBar, responsive ProjectCard/ProjectRow |
+| 2026-01-20 | Project Shell | ✅ Implementation completed | ProjectShell, ProjectLayout.astro, useProject hook, PhaseBadge with picker, navigation tabs |
+| 2026-01-20 | Error Recovery | ✅ Implementation completed | 403/404/offline pages, ErrorView component, safe returnTo validation, middleware public paths |
+| 2026-01-20 | Auth | ✅ Implementation completed | Full auth flow: login/signup pages, AuthForm component, API endpoints, middleware, useAuthRedirect hook |
 | 2026-01-10 | Project Chat | ✅ Implementation completed | Full chat view with message thread, composer, CSAT controls, optimistic updates, error handling |
-| 2026-01-10 | Auth | 🟡 Status updated to In Progress | UI components complete, needs full integration with backend auth flow |
+| 2026-01-10 | Auth | 🟡 Status updated to In Progress | UI components complete (later fully completed on 2026-01-20) |
 | 2026-01-10 | Create Project | ✅ Implementation completed | Includes CreateProjectView, PhaseSelect component, API client utilities, mock auth for development |
 | 2026-01-10 | Backend Auth | 🔧 Mock auth added | MOCK_AUTH=true enables development without full Supabase auth |
 | 2026-01-10 | Auth | ✅ Initial implementation | Sign in/sign up flows with Supabase auth |

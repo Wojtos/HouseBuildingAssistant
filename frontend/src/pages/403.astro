@@ -1,0 +1,38 @@
+---
+/**
+ * 403 Forbidden Page
+ *
+ * Displayed when a user attempts to access a resource they don't have permission for.
+ * Uses shared ErrorView component with appropriate messaging.
+ *
+ * Query params:
+ * - returnTo: Optional path to navigate back to (validated for security)
+ */
+export const prerender = false;
+
+import '../styles/global.css';
+import { ErrorView } from '../components/ErrorView';
+
+// Get optional returnTo query parameter
+const returnTo = Astro.url.searchParams.get('returnTo') ?? undefined;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Access Denied - You don't have permission to view this resource" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+    <title>403 - Access Denied | House Building Assistant</title>
+  </head>
+  <body class="min-h-screen bg-gray-50">
+    <main>
+      <ErrorView client:load variant="403" returnTo={returnTo} />
+    </main>
+  </body>
+</html>

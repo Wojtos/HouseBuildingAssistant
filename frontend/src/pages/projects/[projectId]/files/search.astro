@@ -1,0 +1,33 @@
+---
+/**
+ * Document Search Page - Protected Route
+ *
+ * Route: /projects/:projectId/files/search
+ * Renders the DocumentSearchView component for semantic search across documents.
+ * 
+ * Access to this page is protected by server-side middleware.
+ * Unauthenticated users are redirected to /login before this page renders.
+ */
+
+import ProjectLayout from '../../../../layouts/ProjectLayout.astro';
+import { DocumentSearchView } from '../../../../components/DocumentSearchView';
+
+// User is guaranteed to exist here - middleware redirects unauthenticated users
+const { user } = Astro.locals;
+
+const { projectId } = Astro.params;
+
+// Validate parameters
+if (!projectId) {
+  return Astro.redirect('/projects');
+}
+---
+
+<ProjectLayout
+  title="Search Documents - House Building Assistant"
+  description="Search across your project documents"
+  projectId={projectId}
+  activeNavKey="files"
+>
+  <DocumentSearchView client:load projectId={projectId} />
+</ProjectLayout>

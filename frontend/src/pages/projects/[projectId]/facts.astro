@@ -1,16 +1,16 @@
 ---
 /**
- * Project Chat Page - Protected Route
+ * Project Facts Page - Protected Route
  *
- * Route: /projects/:projectId/chat
- * Renders the ProjectChatView component for AI-powered chat assistance.
+ * Route: /projects/:projectId/facts
+ * Renders the ProjectFactsView component for viewing project memory.
  * 
  * Access to this page is protected by server-side middleware.
  * Unauthenticated users are redirected to /login before this page renders.
  */
 
 import ProjectLayout from '../../../layouts/ProjectLayout.astro';
-import { ProjectChatView } from '../../../components/chat/ProjectChatView';
+import { ProjectFactsView } from '../../../components/ProjectFactsView';
 
 // User is guaranteed to exist here - middleware redirects unauthenticated users
 const { user } = Astro.locals;
@@ -24,12 +24,10 @@ if (!projectId) {
 ---
 
 <ProjectLayout
-  title="Project Chat - House Building Assistant"
-  description="Chat with AI assistant about your building project"
+  title="Project Facts - House Building Assistant"
+  description="View project knowledge and facts"
   projectId={projectId}
-  activeNavKey="chat"
+  activeNavKey="facts"
 >
-  <div class="h-[calc(100vh-4rem)] overflow-hidden">
-    <ProjectChatView client:load projectId={projectId} />
-  </div>
+  <ProjectFactsView client:load projectId={projectId} />
 </ProjectLayout>
