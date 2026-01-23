@@ -87,12 +87,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    // Success - session is established via cookies by Supabase SSR
+    // Success - return session for client-side storage
     return new Response(
       JSON.stringify({
         user: {
           id: data.user.id,
           email: data.user.email,
+        },
+        session: {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
         },
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }

@@ -4,11 +4,17 @@
  * Main view for project chat. Loads initial message history, renders thread and composer,
  * manages send lifecycle (optimistic user message + pending assistant placeholder),
  * and handles CSAT submission.
+ *
+ * Enhanced with:
+ * - UC-3: Fact extraction confirmation dialog
+ * - Fact update notifications
  */
 
 import { useCallback } from 'react';
 import { ChatThread } from './ChatThread';
 import { ChatComposer } from './ChatComposer';
+import { FactConfirmationDialog } from './FactConfirmationDialog';
+import { FactUpdateNotification } from './FactUpdateNotification';
 import { InlineErrorBanner } from '../InlineErrorBanner';
 import { useProjectChat } from '../../hooks/useProjectChat';
 
@@ -31,12 +37,19 @@ export function ProjectChatView({ projectId }: ProjectChatViewProps) {
     errorBanner,
     pendingAssistantId,
     showStillWorking,
+    pendingFacts,
+    isConfirmingFacts,
+    lastStoredFactCount,
+    lastUpdatedDomains,
     loadOlder,
     setDraft,
     sendMessage,
     retryLastSend,
     submitCsat,
     clearError,
+    confirmFacts,
+    dismissFacts,
+    clearFactNotification,
   } = useProjectChat(projectId);
 
   /**
@@ -70,6 +83,18 @@ export function ProjectChatView({ projectId }: ProjectChatViewProps) {
         </div>
       )}
 
+      {/* Fact update notification (UC-3) */}
+      {lastStoredFactCount !== null && lastStoredFactCount > 0 && (
+        <div className="border-b border-green-100 px-4 py-3">
+          <FactUpdateNotification
+            storedCount={lastStoredFactCount}
+            domains={lastUpdatedDomains}
+            projectId={projectId}
+            onDismiss={clearFactNotification}
+          />
+        </div>
+      )}
+
       {/* Chat thread */}
       <ChatThread
         messages={messages}
@@ -90,6 +115,17 @@ export function ProjectChatView({ projectId }: ProjectChatViewProps) {
         onSend={sendMessage}
         isSending={isSending}
       />
+
+      {/* Fact confirmation dialog (UC-3) */}
+      {pendingFacts && pendingFacts.length > 0 && (
+        <FactConfirmationDialog
+          facts={pendingFacts}
+          isOpen={true}
+          isConfirming={isConfirmingFacts}
+          onConfirm={confirmFacts}
+          onClose={dismissFacts}
+        />
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@
 import { useState, useCallback, useId, type FormEvent } from 'react';
 import { useAuthRedirect } from '../hooks/useAuthRedirect';
 import { InlineErrorBanner } from './InlineErrorBanner';
+import { supabase, mapAuthError } from '../lib/supabaseClient';
 import type { AuthFormVM } from '../types/viewModels';
 
 interface AuthFormProps {
@@ -212,7 +213,7 @@ export function AuthForm({ mode, redirectTo: redirectToProp }: AuthFormProps) {
     setFormState((prev) => ({ ...prev, isSubmitting: true, errorMessage: null }));
 
     try {
-      // Determine the API endpoint based on mode
+      // Use server-side API routes for auth
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
 
       const response = await fetch(endpoint, {
@@ -226,7 +227,7 @@ export function AuthForm({ mode, redirectTo: redirectToProp }: AuthFormProps) {
         }),
       });
 
-      const data: RegisterResponse = await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         // Handle error response from API
@@ -245,8 +246,15 @@ export function AuthForm({ mode, redirectTo: redirectToProp }: AuthFormProps) {
         return;
       }
 
+      // If session tokens are returned, set them on the client-side Supabase
+      if (data.session?.access_token && data.session?.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+
       // Success - redirect to target page
-      // Session is now established via cookies by the API
       performRedirect();
     } catch (error) {
       // Handle network or unexpected errors

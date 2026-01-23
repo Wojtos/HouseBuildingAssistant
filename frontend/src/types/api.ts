@@ -566,9 +566,37 @@ export interface RoutingMetadata {
 }
 
 /**
+ * Context metadata showing what sources were used (UC-0, UC-1, UC-2, UC-4)
+ */
+export interface ContextMetadata {
+  used_project_context: boolean;
+  used_memory: boolean;
+  used_documents: boolean;
+  used_web_search: boolean;
+  document_count: number;
+}
+
+/**
+ * Extracted fact from conversation (UC-3)
+ */
+export interface ExtractedFact {
+  id: string;
+  domain: string;
+  key: string;
+  value: string;
+  confidence: number;
+  source: string;
+  reasoning?: string;
+}
+
+/**
  * Chat response DTO
  * POST /api/projects/{project_id}/chat response
  * Returns only the assistant message (user message not echoed back)
+ * 
+ * Enhanced with:
+ * - UC-3: Extracted facts pending confirmation
+ * - Context metadata showing what sources were used
  */
 export interface ChatResponse {
   id: UUID;
@@ -577,6 +605,30 @@ export interface ChatResponse {
   agent_id: string;
   routing_metadata: RoutingMetadata;
   created_at: ISO8601Timestamp;
+  /** Facts extracted from this exchange (pending user confirmation) */
+  extracted_facts?: ExtractedFact[] | null;
+  /** Metadata about context used in generating response */
+  context_metadata?: ContextMetadata | null;
+}
+
+/**
+ * Fact confirmation request
+ * POST /api/projects/{project_id}/facts/confirm request
+ */
+export interface FactConfirmationRequest {
+  confirmed_fact_ids: string[];
+  rejected_fact_ids: string[];
+  facts: ExtractedFact[];
+}
+
+/**
+ * Fact confirmation response
+ * POST /api/projects/{project_id}/facts/confirm response
+ */
+export interface FactConfirmationResponse {
+  stored_count: number;
+  rejected_count: number;
+  updated_domains: string[];
 }
 
 /**

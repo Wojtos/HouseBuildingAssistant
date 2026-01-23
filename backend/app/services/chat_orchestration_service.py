@@ -3,13 +3,19 @@ Chat Orchestration Service
 
 Handles the complex multi-stage workflow for processing chat messages:
 1. Store user message
-2. Retrieve context (project memory, chat history, documents) - RAG
+2. Retrieve context (project context, project memory, chat history, documents) - RAG
 3. Route to appropriate agent (triage)
 4. Execute specialized agent with full context
 5. Store assistant response
 6. Return response
+
+Enhanced with:
+- UC-0: Project context injection
+- UC-1: Enhanced memory formatting with domain prioritization
+- UC-4: Enhanced document formatting with metadata
 """
 
+import json
 import logging
 from datetime import datetime
 from typing import Dict, Any, List, Literal, Optional, Union
@@ -22,12 +28,17 @@ from app.clients.openrouter_service import (
     OpenRouterError,
 )
 from app.clients.ai_client import AIClient, AIServiceError
+from app.core.memory_domains import AGENT_TO_DOMAIN, MEMORY_DOMAINS
+from app.core.prompt_templates import get_agent_prompt, LEGAL_DISCLAIMER, CONTEXT_USAGE_INSTRUCTIONS
 from app.db.models import Message
 from app.schemas.message import MessageRole, ChatResponse, RoutingMetadata
 from app.schemas.openrouter import ModelParams
 from app.services.message_service import MessageService
 from app.services.document_retrieval_service import DocumentRetrievalService, DocumentChunk
 from app.services.project_memory_service import ProjectMemoryService
+from app.services.project_context_service import ProjectContextService
+from app.services.fact_extraction_service import FactExtractionService
+from app.services.web_search_service import WebSearchService
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +107,19 @@ class ChatOrchestrationService:
     
     Coordinates between message storage, context retrieval (RAG),
     AI agent routing, and response generation.
+    
+    Enhanced with:
+    - UC-0: Project context injection for every interaction
+    - UC-1: Structured memory with domain prioritization
+    - UC-4: Enhanced document formatting with full metadata
     """
+    
+    # Document search trigger keywords
+    DOCUMENT_SEARCH_TRIGGERS = [
+        "contract", "permit", "quote", "estimate", "agreement",
+        "according to", "what does my", "document", "uploaded",
+        "in the file", "says about", "my documents", "check if",
+    ]
     
     def __init__(
         self,
@@ -104,6 +127,9 @@ class ChatOrchestrationService:
         message_service: MessageService,
         document_service: Optional[DocumentRetrievalService] = None,
         memory_service: Optional[ProjectMemoryService] = None,
+        project_context_service: Optional[ProjectContextService] = None,
+        fact_extraction_service: Optional[FactExtractionService] = None,
+        web_search_service: Optional[WebSearchService] = None,
         # Legacy support for AIClient
         ai_client: Optional[AIClient] = None,
     ):
@@ -115,14 +141,26 @@ class ChatOrchestrationService:
             message_service: Service for message persistence
             document_service: Optional document retrieval service for RAG
             memory_service: Optional project memory service for RAG
+            project_context_service: Optional project context service (UC-0)
+            fact_extraction_service: Optional fact extraction service (UC-3)
+            web_search_service: Optional web search service (UC-2)
             ai_client: Legacy AI client (deprecated, use openrouter_service)
         """
         self.openrouter_service = openrouter_service
         self.message_service = message_service
         self.document_service = document_service
         self.memory_service = memory_service
+        self.project_context_service = project_context_service
+        self.fact_extraction_service = fact_extraction_service
+        self.web_search_service = web_search_service
         # Keep legacy ai_client for backward compatibility (if needed)
         self.ai_client = ai_client
+        
+        logger.info(
+            f"ChatOrchestrationService initialized: "
+            f"web_search={'enabled' if self.web_search_service else 'disabled'}, "
+            f"mock_mode={self.openrouter_service.mock_mode}"
+        )
     
     async def process_chat(
         self,
@@ -174,7 +212,34 @@ class ChatOrchestrationService:
                 context=context,
             )
             
-            # Step 5: Store assistant message
+            # Step 5: Extract facts (UC-3)
+            extracted_facts = None
+            logger.info(f"=== UC-3 FACT EXTRACTION === service={'present' if self.fact_extraction_service else 'NONE'}")
+            if self.fact_extraction_service:
+                try:
+                    extraction_result = await self.fact_extraction_service.extract_facts(
+                        user_message=content,
+                        assistant_response=assistant_content,
+                        source="conversation",
+                    )
+                    if extraction_result.has_facts:
+                        extracted_facts = [
+                            {
+                                "id": f.id,
+                                "domain": f.domain,
+                                "key": f.key,
+                                "value": f.value,
+                                "confidence": f.confidence,
+                                "source": f.source,
+                                "reasoning": f.reasoning,
+                            }
+                            for f in extraction_result.facts
+                        ]
+                        logger.info(f"Extracted {len(extracted_facts)} facts for confirmation")
+                except Exception as e:
+                    logger.warning(f"Fact extraction failed: {e}")
+            
+            # Step 6: Store assistant message
             assistant_message = await self._store_assistant_message(
                 project_id=project_id,
                 user_id=user_id,
@@ -186,7 +251,16 @@ class ChatOrchestrationService:
                 },
             )
             
-            # Step 6: Build and return response
+            # Step 7: Build context metadata
+            context_metadata = {
+                "used_project_context": bool(context.get("project_context")),
+                "used_memory": bool(context.get("project_memory")),
+                "used_documents": bool(context.get("relevant_documents")),
+                "used_web_search": bool(context.get("web_search_results")),
+                "document_count": len(context.get("relevant_documents", [])),
+            }
+            
+            # Step 8: Build and return response
             response = {
                 "id": assistant_message.id,
                 "role": "assistant",
@@ -197,11 +271,13 @@ class ChatOrchestrationService:
                     "reasoning": reasoning,
                 },
                 "created_at": assistant_message.created_at,
+                "extracted_facts": extracted_facts,
+                "context_metadata": context_metadata,
             }
             
             logger.info(
                 f"Chat processed successfully: {agent_id} "
-                f"(confidence: {confidence:.2f})"
+                f"(confidence: {confidence:.2f}, facts: {len(extracted_facts) if extracted_facts else 0})"
             )
             
             return response
@@ -243,14 +319,25 @@ class ChatOrchestrationService:
         """
         Retrieve full RAG context for the agent.
         
-        Retrieves three types of context:
-        1. Project memory (JSONB) - Structured facts
-        2. Chat history (recent messages) - Conversation context
-        3. Document search (vector similarity) - Relevant document chunks
+        Retrieves four types of context (UC-0, UC-1, UC-4):
+        1. Project context (UC-0) - Core project metadata
+        2. Project memory (UC-1, JSONB) - Structured facts
+        3. Chat history - Conversation context
+        4. Document search (UC-4, vector similarity) - Relevant document chunks
         
         This is the core RAG (Retrieval-Augmented Generation) functionality.
         """
         logger.debug(f"Retrieving RAG context for project {project_id}")
+        
+        # UC-0: Get project context
+        project_context = None
+        if self.project_context_service:
+            try:
+                ctx = await self.project_context_service.get_project_context(project_id)
+                project_context = self.project_context_service.format_context_block(ctx)
+                logger.info(f"Retrieved project context for '{ctx.project_name}'")
+            except Exception as e:
+                logger.warning(f"Could not retrieve project context: {e}")
         
         # Get recent chat history
         chat_history = await self.message_service.get_recent_history(
@@ -267,7 +354,7 @@ class ChatOrchestrationService:
             for msg in chat_history
         ]
         
-        # Get project memory if service available
+        # UC-1: Get project memory if service available
         project_memory = {}
         if self.memory_service:
             try:
@@ -278,9 +365,12 @@ class ChatOrchestrationService:
             except Exception as e:
                 logger.warning(f"Could not retrieve project memory: {e}")
         
-        # Search relevant documents if service available
+        # UC-4: Search relevant documents if service available
+        # Only search if query seems document-related (optimization)
         relevant_documents = []
-        if self.document_service:
+        should_search = self._should_search_documents(user_message)
+        
+        if self.document_service and should_search:
             try:
                 chunks = await self.document_service.search_documents(
                     project_id=project_id,
@@ -294,6 +384,9 @@ class ChatOrchestrationService:
                         "content": chunk.content,
                         "source": chunk.metadata.get("filename", "Unknown"),
                         "similarity": chunk.similarity,
+                        "chunk_index": chunk.chunk_index,
+                        "document_id": str(chunk.document_id),
+                        "upload_date": chunk.metadata.get("upload_date", "Unknown"),
                     }
                     for chunk in chunks
                 ]
@@ -301,21 +394,73 @@ class ChatOrchestrationService:
                 logger.info(f"Retrieved {len(relevant_documents)} relevant document chunks")
             except Exception as e:
                 logger.warning(f"Could not retrieve documents: {e}")
+        elif self.document_service:
+            logger.debug("Skipped document search (no trigger keywords)")
+        
+        # UC-2: Web search if query requires current information
+        web_search_results = None
+        location = None
+        
+        # Extract location from project context for location-aware search
+        if project_context:
+            import re
+            match = re.search(r"Location: ([^\n]+)", project_context)
+            if match and match.group(1) != "Not specified":
+                location = match.group(1)
+        
+        if self.web_search_service:
+            should_search = self.web_search_service.should_search(user_message, location)
+            logger.info(f"Web search check: should_search={should_search}")
+            
+            if should_search:
+                logger.info("Executing web search for current information")
+                try:
+                    search_response = await self.web_search_service.search_and_respond(
+                        query=user_message,
+                        project_context=project_context,
+                        location=location,
+                    )
+                    if search_response:
+                        citations = self.web_search_service.extract_citations(search_response)
+                        web_search_results = self.web_search_service.format_search_results(
+                            search_response, citations
+                        )
+                        logger.info(f"Web search completed with {len(citations)} citations")
+                    else:
+                        logger.warning("Web search returned empty response")
+                except Exception as e:
+                    logger.warning(f"Web search failed, continuing without: {e}", exc_info=True)
+        else:
+            logger.debug("Web search service not available")
         
         context = {
+            "project_context": project_context,  # UC-0
             "chat_history": history_messages,
             "project_memory": project_memory,
             "relevant_documents": relevant_documents,
+            "web_search_results": web_search_results,  # UC-2
         }
         
         logger.info(
             f"RAG context assembled: "
+            f"project_context={'yes' if project_context else 'no'}, "
             f"{len(history_messages)} history messages, "
             f"{len(project_memory)} memory domains, "
-            f"{len(relevant_documents)} document chunks"
+            f"{len(relevant_documents)} document chunks, "
+            f"web_search={'yes' if web_search_results else 'no'}"
         )
         
         return context
+    
+    def _should_search_documents(self, user_message: str) -> bool:
+        """
+        Determine if document search is relevant for this query.
+        
+        Optimization to avoid unnecessary vector searches for queries
+        that are unlikely to benefit from document context.
+        """
+        message_lower = user_message.lower()
+        return any(trigger in message_lower for trigger in self.DOCUMENT_SEARCH_TRIGGERS)
     
     async def _route_to_agent(
         self,
@@ -388,56 +533,87 @@ Analyze the query and select the most appropriate agent. Provide your confidence
         """
         Execute the specialized agent to generate response.
         
-        Uses full RAG context including:
+        Uses full RAG context including (UC-0, UC-1, UC-4):
+        - Project context (UC-0)
+        - Project memory (UC-1, structured facts with domain prioritization)
+        - Relevant document chunks (UC-4, semantic search with metadata)
         - Chat history
-        - Project memory (structured facts)
-        - Relevant document chunks (semantic search)
         
         Args:
             agent_id: Selected agent identifier
             user_message: User's query
-            context: Retrieved RAG context (history, memory, documents)
+            context: Retrieved RAG context (project_context, history, memory, documents)
             
         Returns:
             Agent's response content
         """
         logger.debug(f"Executing {agent_id} with full RAG context")
         
-        # Build agent-specific system prompt
-        base_prompt = self._get_agent_prompt(agent_id)
+        # Build agent-specific system prompt using unified templates
+        base_prompt = get_agent_prompt(agent_id)
         
         # Build enriched context from RAG
         context_parts = []
         
-        # 1. Add project memory if available
-        if context.get("project_memory"):
-            memory_str = self._format_project_memory(context["project_memory"])
-            if memory_str:
-                context_parts.append(f"=== PROJECT FACTS ===\n{memory_str}")
+        # UC-0: Add project context first (most important)
+        if context.get("project_context"):
+            context_parts.append(context["project_context"])
         
-        # 2. Add relevant documents if available
+        # UC-1: Add project memory with domain prioritization
+        if context.get("project_memory"):
+            # Get priority domain for this agent
+            priority_domain = AGENT_TO_DOMAIN.get(agent_id)
+            priority_domains = [priority_domain] if priority_domain else None
+            
+            memory_str = self._format_project_memory(
+                context["project_memory"],
+                max_tokens=2000,
+                priority_domains=priority_domains,
+            )
+            if memory_str:
+                context_parts.append(memory_str)
+        
+        # UC-4: Add relevant documents with enhanced formatting
         if context.get("relevant_documents"):
             docs_str = self._format_documents(context["relevant_documents"])
             if docs_str:
-                context_parts.append(f"=== RELEVANT DOCUMENTS ===\n{docs_str}")
+                context_parts.append(docs_str)
         
-        # 3. Add chat history
+        # UC-2: Add web search results
+        if context.get("web_search_results"):
+            context_parts.append(context["web_search_results"])
+        
+        # Add chat history
         if context.get("chat_history"):
             history_str = self._format_chat_history(context["chat_history"][-3:])
             if history_str:
                 context_parts.append(f"=== RECENT CONVERSATION ===\n{history_str}")
         
         # Combine base prompt with context
+        prompt_parts = [base_prompt, LEGAL_DISCLAIMER]
+        
+        # Add context usage instructions if any context is present
         if context_parts:
+            prompt_parts.append(CONTEXT_USAGE_INSTRUCTIONS)
+            
+            # Add special instruction if web search results are present
+            if context.get("web_search_results"):
+                prompt_parts.append(
+                    "IMPORTANT: Web search was already performed for this query. "
+                    "The results are included below. Use this information to answer "
+                    "the user's question with current data. Do NOT say you cannot "
+                    "search the internet - the search was already done for you."
+                )
+            
             combined_context = "\n\n".join(context_parts)
-            system_message = f"{base_prompt}\n\nContext for this query:\n\n{combined_context}"
+            prompt_parts.append(f"Context for this query:\n\n{combined_context}")
             
             logger.debug(
                 f"Added RAG context: {len(context_parts)} sections, "
                 f"{len(combined_context)} characters"
             )
-        else:
-            system_message = base_prompt
+        
+        system_message = "\n\n".join(prompt_parts)
         
         try:
             # Call OpenRouterService for agent response
@@ -452,8 +628,23 @@ Analyze the query and select the most appropriate agent. Provide your confidence
             logger.error(f"Error executing agent {agent_id}: {e}")
             raise
     
-    def _format_project_memory(self, memory: Dict[str, Any]) -> str:
-        """Format project memory for inclusion in prompt."""
+    def _format_project_memory(
+        self,
+        memory: Dict[str, Any],
+        max_tokens: int = 2000,
+        priority_domains: Optional[List[str]] = None,
+    ) -> str:
+        """
+        Format project memory as structured JSON block per UC-1 spec.
+        
+        Args:
+            memory: Full project memory dict
+            max_tokens: Maximum tokens for memory context
+            priority_domains: Domains to prioritize (e.g., current agent's domain)
+            
+        Returns:
+            Formatted memory block for prompt injection
+        """
         if not memory:
             return ""
         
@@ -463,29 +654,62 @@ Analyze the query and select the most appropriate agent. Provide your confidence
         if not non_empty:
             return ""
         
-        lines = []
-        for domain, data in non_empty.items():
-            lines.append(f"{domain}:")
-            for key, value in data.items():
-                lines.append(f"  - {key}: {value}")
+        # Smart truncation: prioritize certain domains
+        if priority_domains:
+            # Put priority domains first
+            ordered = {}
+            for domain in priority_domains:
+                if domain in non_empty:
+                    ordered[domain] = non_empty[domain]
+            for domain, data in non_empty.items():
+                if domain not in ordered:
+                    ordered[domain] = data
+            non_empty = ordered
         
-        return "\n".join(lines)
+        # Format as JSON for structured context
+        memory_json = json.dumps(non_empty, indent=2, default=str)
+        
+        # Truncate if too long (rough estimate: 4 chars per token)
+        max_chars = max_tokens * 4
+        if len(memory_json) > max_chars:
+            memory_json = memory_json[:max_chars] + "\n... (truncated)"
+        
+        return f"""=== PROJECT MEMORY ===
+{memory_json}
+======================"""
     
     def _format_documents(self, documents: List[Dict[str, Any]]) -> str:
-        """Format document chunks for inclusion in prompt."""
+        """
+        Format document chunks per UC-4 spec with full metadata.
+        
+        Enhanced formatting includes:
+        - Document source and upload date
+        - Chunk index information
+        - Relevance score
+        - Citation instructions
+        """
         if not documents:
             return ""
         
-        lines = []
+        lines = ["=== RETRIEVED DOCUMENTS ==="]
+        
         for i, doc in enumerate(documents, 1):
             source = doc.get("source", "Unknown")
             content = doc.get("content", "")
             similarity = doc.get("similarity", 0)
+            chunk_index = doc.get("chunk_index", "?")
+            upload_date = doc.get("upload_date", "Unknown date")
             
-            lines.append(
-                f"Document {i} (from {source}, relevance: {similarity:.2f}):\n"
-                f"{content}\n"
-            )
+            lines.append(f"""
+---
+Document {i}: "{source}" (uploaded {upload_date})
+Chunk {chunk_index}, Relevance: {similarity:.2f}
+
+"{content}"
+---""")
+        
+        lines.append("===========================")
+        lines.append("Note: Cite document sources when referencing this information.")
         
         return "\n".join(lines)
     
@@ -501,48 +725,6 @@ Analyze the query and select the most appropriate agent. Provide your confidence
             lines.append(f"{role}: {content}")
         
         return "\n".join(lines)
-    
-    def _get_agent_prompt(self, agent_id: str) -> str:
-        """Get specialized system prompt for each agent."""
-        prompts = {
-            "LAND_FEASIBILITY_AGENT": """You are a Land & Feasibility specialist for home building.
-You help with land selection, site analysis, soil reports, and initial feasibility assessment.
-Provide practical, actionable advice based on construction best practices.""",
-            
-            "REGULATORY_PERMITTING_AGENT": """You are a Regulatory & Permitting expert for home building.
-You help with zoning codes, permits, regulations, and inspection requirements.
-Always remind users to verify with local authorities as regulations vary by location.""",
-            
-            "ARCHITECTURAL_DESIGN_AGENT": """You are an Architectural Design consultant for home building.
-You help with layouts, design concepts, material selection, and energy efficiency.
-Focus on practical design solutions that balance aesthetics with functionality.""",
-            
-            "FINANCE_LEGAL_AGENT": """You are a Finance & Legal advisor for home construction.
-You help with construction loans, budgeting, contracts, and insurance.
-Always include disclaimers that users should consult licensed professionals for legal/financial decisions.""",
-            
-            "SITE_PREP_FOUNDATION_AGENT": """You are a Site Preparation & Foundation specialist.
-You help with excavation, grading, drainage, and foundation types.
-Emphasize the importance of proper site prep and soil analysis.""",
-            
-            "SHELL_SYSTEMS_AGENT": """You are a Structural Shell & Systems expert.
-You help with framing, roofing, and MEP systems (HVAC, plumbing, electrical).
-Focus on code compliance and proper installation sequences.""",
-            
-            "PROCUREMENT_QUALITY_AGENT": """You are a Procurement & Quality Control specialist.
-You help with material selection, cost estimation, scheduling, and quality checks.
-Emphasize the importance of quality materials and proper inspections.""",
-            
-            "FINISHES_FURNISHING_AGENT": """You are an Interior Finishes & Furnishing consultant.
-You help with interior finishes, fixtures, cabinetry, and smart home integration.
-Focus on practical choices that balance quality with budget.""",
-            
-            "TRIAGE_MEMORY_AGENT": """You are a helpful home building assistant.
-You handle general queries, provide project summaries, and answer questions that don't fit specific domains.
-Be friendly and guide users to more specific questions when appropriate.""",
-        }
-        
-        return prompts.get(agent_id, prompts["TRIAGE_MEMORY_AGENT"])
     
     async def _store_assistant_message(
         self,
@@ -570,6 +752,9 @@ def get_chat_orchestration_service(
     message_service: MessageService,
     document_service: Optional[DocumentRetrievalService] = None,
     memory_service: Optional[ProjectMemoryService] = None,
+    project_context_service: Optional[ProjectContextService] = None,
+    fact_extraction_service: Optional[FactExtractionService] = None,
+    web_search_service: Optional[WebSearchService] = None,
 ) -> ChatOrchestrationService:
     """
     Factory function for creating ChatOrchestrationService instances.
@@ -581,6 +766,9 @@ def get_chat_orchestration_service(
         message_service: Service for message persistence
         document_service: Optional document retrieval service for RAG
         memory_service: Optional project memory service for RAG
+        project_context_service: Optional project context service (UC-0)
+        fact_extraction_service: Optional fact extraction service (UC-3)
+        web_search_service: Optional web search service (UC-2)
         
     Returns:
         ChatOrchestrationService instance
@@ -590,5 +778,8 @@ def get_chat_orchestration_service(
         message_service=message_service,
         document_service=document_service,
         memory_service=memory_service,
+        project_context_service=project_context_service,
+        fact_extraction_service=fact_extraction_service,
+        web_search_service=web_search_service,
     )
 

@@ -3,10 +3,10 @@ Projects API Router
 Example implementation showing how to use Supabase with FastAPI
 """
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from supabase import Client
 
 from app.db import (
@@ -16,47 +16,85 @@ from app.db import (
     get_supabase,
 )
 from app.api.dependencies import get_current_user
-from app.schemas.project import ProjectCreateRequest, ProjectResponse
+from app.schemas.project import ProjectCreateRequest, ProjectResponse, ProjectListResponse
+from app.schemas.common import PaginationInfo
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
-@router.get("/", response_model=List[Project])
+@router.get("/", response_model=ProjectListResponse)
 async def list_projects(
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    sort_by: str = Query(default="updated_at"),
+    sort_order: str = Query(default="desc"),
+    phase: Optional[str] = Query(default=None),
+    include_deleted: bool = Query(default=False),
+    user_id: UUID = Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
-    user_id: UUID | None = None
 ):
     """
-    Get all projects, optionally filtered by user_id.
+    Get all projects for the authenticated user with pagination.
+    
+    **Authentication:** Required (Bearer token in Authorization header)
     
     Example:
-        GET /projects
-        GET /projects?user_id=123e4567-e89b-12d3-a456-426614174000
+        GET /projects?page=1&limit=20&sort_by=updated_at&sort_order=desc
+        Authorization: Bearer <jwt_token>
     """
-    query = supabase.table("projects").select("*")
+    # Build query
+    query = supabase.table("projects").select("*", count="exact").eq("user_id", str(user_id))
     
-    if user_id:
-        query = query.eq("user_id", str(user_id))
+    # Apply phase filter
+    if phase:
+        query = query.eq("current_phase", phase)
+    
+    # Apply sorting
+    is_desc = sort_order.lower() == "desc"
+    query = query.order(sort_by, desc=is_desc)
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    query = query.range(offset, offset + limit - 1)
     
     response = query.execute()
-    return response.data
+    
+    # Calculate pagination
+    total_items = response.count or 0
+    total_pages = (total_items + limit - 1) // limit if total_items > 0 else 1
+    
+    return ProjectListResponse(
+        data=response.data,
+        pagination=PaginationInfo(
+            page=page,
+            limit=limit,
+            total_items=total_items,
+            total_pages=total_pages,
+        )
+    )
 
 
 @router.get("/{project_id}", response_model=Project)
 async def get_project(
     project_id: UUID,
+    user_id: UUID = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
     """
     Get a single project by ID.
     
+    **Authentication:** Required (Bearer token in Authorization header)
+    **Authorization:** User must own the project
+    
     Example:
         GET /projects/123e4567-e89b-12d3-a456-426614174000
+        Authorization: Bearer <jwt_token>
     """
     response = (
         supabase.table("projects")
         .select("*")
         .eq("id", str(project_id))
+        .eq("user_id", str(user_id))
         .execute()
     )
     
@@ -110,13 +148,18 @@ async def create_project(
 async def update_project(
     project_id: UUID,
     project: ProjectUpdate,
+    user_id: UUID = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
     """
     Update an existing project.
     
+    **Authentication:** Required (Bearer token in Authorization header)
+    **Authorization:** User must own the project
+    
     Example:
         PATCH /projects/123e4567-e89b-12d3-a456-426614174000
+        Authorization: Bearer <jwt_token>
         {
             "current_phase": "FOUNDATION",
             "location": "Warsaw, Poland - Updated"
@@ -132,6 +175,7 @@ async def update_project(
         supabase.table("projects")
         .update(update_data)
         .eq("id", str(project_id))
+        .eq("user_id", str(user_id))
         .execute()
     )
     
@@ -144,18 +188,24 @@ async def update_project(
 @router.delete("/{project_id}", status_code=204)
 async def delete_project(
     project_id: UUID,
+    user_id: UUID = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
     """
     Delete a project.
     
+    **Authentication:** Required (Bearer token in Authorization header)
+    **Authorization:** User must own the project
+    
     Example:
         DELETE /projects/123e4567-e89b-12d3-a456-426614174000
+        Authorization: Bearer <jwt_token>
     """
     response = (
         supabase.table("projects")
         .delete()
         .eq("id", str(project_id))
+        .eq("user_id", str(user_id))
         .execute()
     )
     

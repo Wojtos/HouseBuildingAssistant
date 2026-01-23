@@ -27,7 +27,8 @@ interface ProjectShellProps {
  */
 const NAV_ITEMS: { key: ProjectNavKey; label: string; href: (id: string) => string }[] = [
   { key: 'chat', label: 'Chat', href: (id) => `/projects/${id}/chat` },
-  { key: 'files', label: 'Files', href: (id) => `/projects/${id}/files` },
+  // TODO: Re-enable when documents functionality is ready
+  // { key: 'files', label: 'Files', href: (id) => `/projects/${id}/files` },
   { key: 'facts', label: 'Facts', href: (id) => `/projects/${id}/facts` },
   { key: 'settings', label: 'Settings', href: (id) => `/projects/${id}/settings` },
 ];

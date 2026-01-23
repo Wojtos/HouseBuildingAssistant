@@ -80,6 +80,30 @@ export interface CreateProjectFormVM {
 export type MessageStatus = 'sent' | 'pending' | 'failed';
 
 /**
+ * Context metadata view model (UC-0, UC-1, UC-2, UC-4)
+ */
+export interface ContextMetadataVM {
+  used_project_context: boolean;
+  used_memory: boolean;
+  used_documents: boolean;
+  used_web_search: boolean;
+  document_count: number;
+}
+
+/**
+ * Extracted fact view model (UC-3)
+ */
+export interface ExtractedFactVM {
+  id: string;
+  domain: string;
+  key: string;
+  value: string;
+  confidence: number;
+  source: string;
+  reasoning?: string;
+}
+
+/**
  * Chat message view model
  * Represents a single message in the chat thread
  */
@@ -100,6 +124,10 @@ export interface ChatMessageVM {
   csat_rating?: number | null;
   /** Status for optimistic/pending UI */
   status?: MessageStatus;
+  /** Context metadata showing what sources were used (assistant messages only) */
+  context_metadata?: ContextMetadataVM | null;
+  /** Extracted facts pending confirmation (assistant messages only) */
+  extracted_facts?: ExtractedFactVM[] | null;
 }
 
 /**
@@ -246,6 +274,7 @@ export interface ProjectContextVM {
 /**
  * Navigation key for project shell tabs
  */
+// TODO: Re-enable 'files' when documents functionality is ready
 export type ProjectNavKey = 'chat' | 'files' | 'facts' | 'settings';
 
 // =============================================================================

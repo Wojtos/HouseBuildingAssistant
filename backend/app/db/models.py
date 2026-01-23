@@ -42,6 +42,7 @@ class ProfileInsert(ProfileBase):
 class ProjectBase(BaseModel):
     """Base model for construction projects"""
     name: str
+    description: Optional[str] = None
     location: Optional[str] = None
     current_phase: ConstructionPhase = ConstructionPhase.LAND_SELECTION
 
@@ -65,6 +66,7 @@ class ProjectInsert(ProjectBase):
 class ProjectUpdate(BaseModel):
     """Model for updating projects"""
     name: Optional[str] = None
+    description: Optional[str] = None
     location: Optional[str] = None
     current_phase: Optional[ConstructionPhase] = None
 

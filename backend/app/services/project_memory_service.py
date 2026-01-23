@@ -5,13 +5,15 @@ Handles project memory (JSONB) operations for storing and retrieving
 structured project facts used in RAG context.
 
 Project memory stores domain-specific facts organized by agent areas:
-- LAND: Land selection, site info
-- PERMITTING: Permits, regulations
-- DESIGN: Architectural decisions
-- FINANCE: Budget, costs, loans
-- CONSTRUCTION: Site prep, foundation, systems
-- PROCUREMENT: Materials, contractors
-- FINISHES: Interior selections
+- LAND_FEASIBILITY: Land selection, site analysis, soil reports
+- REGULATORY_PERMITTING: Permits, zoning, regulations
+- ARCHITECTURAL_DESIGN: Design, layouts, materials
+- FINANCE_LEGAL: Budget, loans, contracts, insurance
+- SITE_PREP_FOUNDATION: Excavation, grading, foundation
+- SHELL_SYSTEMS: Framing, roofing, HVAC, plumbing, electrical
+- PROCUREMENT_QUALITY: Materials, scheduling, quality control
+- FINISHES_FURNISHING: Interior finishes, fixtures
+- GENERAL: General project information
 """
 
 import logging
@@ -19,6 +21,8 @@ from typing import Any, Dict, Optional
 from uuid import UUID
 
 from supabase import Client
+
+from app.core.memory_domains import get_default_memory_structure
 
 logger = logging.getLogger(__name__)
 
@@ -215,20 +219,12 @@ class ProjectMemoryService:
         """
         Get default memory structure with empty domains.
         
+        Uses canonical domain names from memory_domains module.
+        
         Returns:
             Dictionary with domain keys initialized to empty dicts
         """
-        return {
-            "LAND": {},
-            "PERMITTING": {},
-            "DESIGN": {},
-            "FINANCE": {},
-            "SITE_PREP": {},
-            "SHELL_SYSTEMS": {},
-            "PROCUREMENT": {},
-            "FINISHES": {},
-            "GENERAL": {},
-        }
+        return get_default_memory_structure()
     
     def _deep_merge(self, base: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
         """

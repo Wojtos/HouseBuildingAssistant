@@ -8,7 +8,7 @@ Derived from: Message, MessageBase, MessageInsert, MessageUpdate,
 
 from datetime import datetime
 from enum import Enum
-from typing import Literal, Optional
+from typing import Any, List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -108,12 +108,54 @@ class RoutingMetadata(BaseModel):
     )
 
 
+class ContextMetadata(BaseModel):
+    """
+    Metadata about context used in generating the response.
+    
+    Tracks which context sources were used (UC-0, UC-1, UC-2, UC-4).
+    """
+    used_project_context: bool = Field(
+        default=False, description="Whether project context was included (UC-0)"
+    )
+    used_memory: bool = Field(
+        default=False, description="Whether project memory was included (UC-1)"
+    )
+    used_documents: bool = Field(
+        default=False, description="Whether documents were searched (UC-4)"
+    )
+    used_web_search: bool = Field(
+        default=False, description="Whether web search was performed (UC-2)"
+    )
+    document_count: int = Field(
+        default=0, description="Number of document chunks used"
+    )
+
+
+class ExtractedFactSummary(BaseModel):
+    """
+    Summary of an extracted fact for chat response.
+    
+    Used in ChatResponse to show facts pending confirmation.
+    """
+    id: str = Field(..., description="Unique identifier for this fact")
+    domain: str = Field(..., description="Memory domain")
+    key: str = Field(..., description="Fact key")
+    value: str = Field(..., description="Fact value")
+    confidence: float = Field(..., description="Extraction confidence")
+    source: str = Field(..., description="Source: 'conversation' or document filename")
+    reasoning: Optional[str] = Field(None, description="Why this was extracted")
+
+
 class ChatResponse(BaseModel):
     """
     Chat response DTO.
     
     POST /api/projects/{project_id}/chat response
     Returns only the assistant message (user message not echoed back).
+    
+    Enhanced with:
+    - UC-3: Extracted facts pending confirmation
+    - Context metadata showing what sources were used
     
     Notes:
     - Only the assistant message is returned
@@ -132,6 +174,18 @@ class ChatResponse(BaseModel):
         description="Information about agent routing decision",
     )
     created_at: datetime = Field(description="Response timestamp")
+    
+    # UC-3: Extracted facts pending confirmation
+    extracted_facts: Optional[List[ExtractedFactSummary]] = Field(
+        default=None,
+        description="Facts extracted from this exchange (pending user confirmation)",
+    )
+    
+    # Context metadata (UC-0, UC-1, UC-2, UC-4)
+    context_metadata: Optional[ContextMetadata] = Field(
+        default=None,
+        description="Metadata about context used in generating response",
+    )
 
 
 class MessageFeedbackResponse(BaseModel):

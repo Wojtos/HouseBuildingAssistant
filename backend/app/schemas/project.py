@@ -58,6 +58,9 @@ class ProjectListItem(BaseModel):
     """
     id: UUID = Field(description="Project unique identifier")
     name: str = Field(description="Project name")
+    description: Optional[str] = Field(
+        default=None, description="Project description"
+    )
     location: Optional[str] = Field(
         default=None, description="Project location"
     )
@@ -94,6 +97,9 @@ class ProjectResponse(BaseModel):
     id: UUID = Field(description="Project unique identifier")
     user_id: UUID = Field(description="Owner's user ID")
     name: str = Field(description="Project name")
+    description: Optional[str] = Field(
+        default=None, description="Project description"
+    )
     location: Optional[str] = Field(
         default=None, description="Project location"
     )
@@ -156,6 +162,11 @@ class ProjectCreateRequest(BaseModel):
         max_length=255,
         description="Project name (required)",
     )
+    description: Optional[str] = Field(
+        default=None,
+        max_length=2000,
+        description="Project description",
+    )
     location: Optional[str] = Field(
         default=None,
         max_length=500,
@@ -181,6 +192,11 @@ class ProjectUpdateRequest(BaseModel):
         min_length=1,
         max_length=255,
         description="Project name",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        max_length=2000,
+        description="Project description",
     )
     location: Optional[str] = Field(
         default=None,

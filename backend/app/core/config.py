@@ -44,6 +44,20 @@ class Settings(BaseSettings):
     openrouter_app_url: str = "https://homebuild-assistant.local"
     openrouter_app_name: str = "HomeBuild AI Assistant"
     
+    # Web Search Configuration (UC-2) - uses OpenRouter :online models
+    openrouter_web_search_model: str = "openai/gpt-4o-mini:online"
+    web_search_enabled: bool = True
+    
+    # Fact Extraction Configuration (UC-3)
+    fact_extraction_enabled: bool = True
+    openrouter_fact_extraction_model: str = "openai/gpt-4o-mini"
+    
+    # Context Limits
+    max_memory_tokens: int = 2000
+    max_document_tokens: int = 2000
+    max_history_messages: int = 10
+    max_document_chunks: int = 5
+    
     # Database Configuration
     database_url: str = ""
     

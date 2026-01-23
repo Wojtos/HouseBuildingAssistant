@@ -11,6 +11,7 @@
 
 import '../../styles/global.css';
 import { AccountSettingsView } from '../../components/AccountSettingsView';
+import { LogoutButton } from '../../components/LogoutButton';
 
 // User is guaranteed to exist here - middleware redirects unauthenticated users
 const { user } = Astro.locals;
@@ -40,6 +41,7 @@ const { user } = Astro.locals;
               House Building Assistant
             </a>
           </div>
+          <LogoutButton client:load className="text-sm font-medium text-gray-600 hover:text-gray-900" />
         </div>
       </div>
     </header>

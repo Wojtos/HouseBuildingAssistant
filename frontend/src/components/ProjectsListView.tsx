@@ -10,6 +10,7 @@ import { useProjectsList } from '../hooks/useProjectsList';
 import { PaginationControls } from './PaginationControls';
 import { PhaseBadge } from './PhaseBadge';
 import { InlineErrorBanner, InlineInfoBanner } from './InlineErrorBanner';
+import { LogoutButton } from './LogoutButton';
 import { ConstructionPhase, type ProjectListItem } from '../types/api';
 import { getPhaseLabel } from './PhaseSelect';
 
@@ -376,6 +377,7 @@ export function ProjectsListView() {
                 </svg>
                 New Project
               </button>
+              <LogoutButton className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" />
             </div>
           </div>
         </header>

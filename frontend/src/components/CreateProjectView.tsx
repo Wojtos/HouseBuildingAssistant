@@ -8,6 +8,7 @@
 import { useState, type FormEvent } from 'react';
 import { InlineErrorBanner } from './InlineErrorBanner';
 import { PhaseSelect } from './PhaseSelect';
+import { LogoutButton } from './LogoutButton';
 import { fetchJson, ApiError, handleApiError } from '../lib/apiClient';
 import type {
   ProjectCreateRequest,
@@ -183,39 +184,50 @@ export function CreateProjectView() {
     formState.name.trim() !== '' && !formState.isSubmitting;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-2xl space-y-8">
-        {/* Header */}
-        <div>
-          <button
-            type="button"
-            onClick={handleBack}
-            className="mb-4 flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            disabled={formState.isSubmitting}
-          >
-            <svg
-              className="mr-2 h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Back to Projects
-          </button>
-          
-          <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">
-            Create New Project
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Start tracking your building project with AI-powered assistance
-          </p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top header with logout */}
+      <header className="border-b border-gray-200 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          <a href="/projects" className="text-xl font-semibold text-gray-900">
+            House Building Assistant
+          </a>
+          <LogoutButton className="text-sm font-medium text-gray-600 hover:text-gray-900" />
         </div>
+      </header>
+
+      <div className="flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+        <div className="w-full max-w-2xl space-y-8">
+          {/* Header */}
+          <div>
+            <button
+              type="button"
+              onClick={handleBack}
+              className="mb-4 flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              disabled={formState.isSubmitting}
+            >
+              <svg
+                className="mr-2 h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+              Back to Projects
+            </button>
+            
+            <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">
+              Create New Project
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Start tracking your building project with AI-powered assistance
+            </p>
+          </div>
 
         {/* Form Card */}
         <div className="rounded-lg bg-white px-6 py-8 shadow sm:px-10">
@@ -382,6 +394,7 @@ export function CreateProjectView() {
               </button>
             </div>
           </form>
+        </div>
         </div>
       </div>
     </div>

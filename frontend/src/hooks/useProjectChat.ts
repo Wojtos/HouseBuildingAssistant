@@ -14,6 +14,9 @@ import type {
   ChatResponse,
   MessageFeedbackRequest,
   MessageFeedbackResponse,
+  ExtractedFact,
+  FactConfirmationRequest,
+  FactConfirmationResponse,
 } from '../types/api';
 import type { ChatMessageVM, ApiErrorVM } from '../types/viewModels';
 
@@ -54,6 +57,8 @@ function chatResponseToVM(response: ChatResponse): ChatMessageVM {
     agent_id: response.agent_id,
     routing_metadata: response.routing_metadata,
     status: 'sent',
+    context_metadata: response.context_metadata ?? null,
+    extracted_facts: response.extracted_facts ?? null,
   };
 }
 
@@ -76,6 +81,14 @@ interface UseProjectChatState {
   pendingAssistantId: string | null;
   /** Whether placeholder should show "Still working..." */
   showStillWorking: boolean;
+  /** Pending facts awaiting confirmation (UC-3) */
+  pendingFacts: ExtractedFact[] | null;
+  /** Whether fact confirmation is in progress */
+  isConfirmingFacts: boolean;
+  /** Recently stored fact count for notification */
+  lastStoredFactCount: number | null;
+  /** Recently updated domains for notification */
+  lastUpdatedDomains: string[];
 }
 
 interface UseProjectChatActions {
@@ -93,6 +106,12 @@ interface UseProjectChatActions {
   submitCsat: (messageId: string, rating: 1 | 2 | 3 | 4 | 5) => Promise<void>;
   /** Clear error banner */
   clearError: () => void;
+  /** Confirm and store extracted facts (UC-3) */
+  confirmFacts: (confirmedIds: string[], rejectedIds: string[]) => Promise<void>;
+  /** Dismiss pending facts without storing */
+  dismissFacts: () => void;
+  /** Clear fact notification */
+  clearFactNotification: () => void;
 }
 
 export type UseProjectChatReturn = UseProjectChatState & UseProjectChatActions;
@@ -112,6 +131,12 @@ export function useProjectChat(projectId: string): UseProjectChatReturn {
     null
   );
   const [showStillWorking, setShowStillWorking] = useState(false);
+  
+  // Fact extraction state (UC-3)
+  const [pendingFacts, setPendingFacts] = useState<ExtractedFact[] | null>(null);
+  const [isConfirmingFacts, setIsConfirmingFacts] = useState(false);
+  const [lastStoredFactCount, setLastStoredFactCount] = useState<number | null>(null);
+  const [lastUpdatedDomains, setLastUpdatedDomains] = useState<string[]>([]);
 
   // Track last sent content for retry
   const lastSentContentRef = useRef<string | null>(null);
@@ -310,6 +335,11 @@ export function useProjectChat(projectId: string): UseProjectChatReturn {
 
       setPendingAssistantId(null);
       lastSentContentRef.current = null;
+      
+      // UC-3: Check for extracted facts
+      if (response.extracted_facts && response.extracted_facts.length > 0) {
+        setPendingFacts(response.extracted_facts);
+      }
     } catch (error) {
       // Clear timeout
       if (stillWorkingTimeoutRef.current) {
@@ -544,6 +574,71 @@ export function useProjectChat(projectId: string): UseProjectChatReturn {
     setErrorBanner(null);
   }, []);
 
+  /**
+   * Confirm and store extracted facts (UC-3)
+   */
+  const confirmFacts = useCallback(
+    async (confirmedIds: string[], rejectedIds: string[]) => {
+      if (!pendingFacts) return;
+
+      setIsConfirmingFacts(true);
+
+      try {
+        const request: FactConfirmationRequest = {
+          confirmed_fact_ids: confirmedIds,
+          rejected_fact_ids: rejectedIds,
+          facts: pendingFacts,
+        };
+
+        const response = await fetchJson<FactConfirmationResponse>(
+          `/api/projects/${projectId}/facts/confirm`,
+          {
+            method: 'POST',
+            body: JSON.stringify(request),
+          }
+        );
+
+        // Show success notification
+        if (response.stored_count > 0) {
+          setLastStoredFactCount(response.stored_count);
+          setLastUpdatedDomains(response.updated_domains);
+        }
+
+        // Clear pending facts
+        setPendingFacts(null);
+      } catch (error) {
+        if (error instanceof ApiError && error.statusCode === 401) {
+          handleApiError(error, `/projects/${projectId}/chat`);
+          return;
+        }
+
+        setErrorBanner({
+          message: 'Failed to save facts. Please try again.',
+          isRetryable: true,
+          retryLabel: 'Retry',
+        });
+      } finally {
+        setIsConfirmingFacts(false);
+      }
+    },
+    [projectId, pendingFacts]
+  );
+
+  /**
+   * Dismiss pending facts without storing
+   */
+  const dismissFacts = useCallback(() => {
+    setPendingFacts(null);
+  }, []);
+
+  /**
+   * Clear fact notification
+   */
+  const clearFactNotification = useCallback(() => {
+    setLastStoredFactCount(null);
+    setLastUpdatedDomains([]);
+  }, []);
+
   // Load initial messages on mount
   useEffect(() => {
     loadInitial();
@@ -559,6 +654,10 @@ export function useProjectChat(projectId: string): UseProjectChatReturn {
     errorBanner,
     pendingAssistantId,
     showStillWorking,
+    pendingFacts,
+    isConfirmingFacts,
+    lastStoredFactCount,
+    lastUpdatedDomains,
     loadInitial,
     loadOlder,
     setDraft,
@@ -566,5 +665,8 @@ export function useProjectChat(projectId: string): UseProjectChatReturn {
     retryLastSend,
     submitCsat,
     clearError,
+    confirmFacts,
+    dismissFacts,
+    clearFactNotification,
   };
 }

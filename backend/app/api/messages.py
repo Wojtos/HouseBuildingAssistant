@@ -42,6 +42,18 @@ from app.services.project_memory_service import (
     ProjectMemoryService,
     get_project_memory_service,
 )
+from app.services.project_context_service import (
+    ProjectContextService,
+    get_project_context_service,
+)
+from app.services.fact_extraction_service import (
+    FactExtractionService,
+    get_fact_extraction_service,
+)
+from app.services.web_search_service import (
+    WebSearchService,
+    get_web_search_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +226,14 @@ async def send_message(
         # Initialize RAG services
         document_service = get_document_retrieval_service()
         memory_service = get_project_memory_service(supabase)
+        project_context_service = get_project_context_service(supabase)  # UC-0
+        fact_extraction_service = get_fact_extraction_service(  # UC-3
+            openrouter_service=openrouter_service,
+            memory_service=memory_service,
+        )
+        web_search_service = get_web_search_service(  # UC-2
+            openrouter_service=openrouter_service,
+        )
         
         # Create orchestration service with OpenRouterService
         chat_service = get_chat_orchestration_service(
@@ -221,6 +241,9 @@ async def send_message(
             message_service=message_service,
             document_service=document_service,
             memory_service=memory_service,
+            project_context_service=project_context_service,  # UC-0
+            fact_extraction_service=fact_extraction_service,  # UC-3
+            web_search_service=web_search_service,  # UC-2
         )
         
         # Process chat with timeout (30 seconds max to allow for retries)
