@@ -7,12 +7,24 @@
 import { createClient, type AuthError } from '@supabase/supabase-js';
 
 // Get Supabase configuration from environment variables
+// For SSR, prefer process.env (runtime) over import.meta.env (build-time)
+// For client-side, import.meta.env is inlined at build time
+const getEnvVar = (key: string, fallback: string): string => {
+  // Try process.env first (for SSR runtime)
+  if (typeof process !== 'undefined' && process.env?.[key]) {
+    return process.env[key] as string;
+  }
+  // Fall back to import.meta.env (build-time for client, runtime for dev)
+  const metaEnv = import.meta.env as Record<string, string>;
+  return metaEnv[key] || fallback;
+};
+
+const envUrl = getEnvVar('PUBLIC_SUPABASE_URL', 'http://localhost:54321');
 // For client-side, always use localhost since host.docker.internal doesn't work from browser
-const envUrl = import.meta.env.PUBLIC_SUPABASE_URL || 'http://localhost:54321';
 const supabaseUrl = typeof window !== 'undefined' 
   ? envUrl.replace('host.docker.internal', 'localhost')
   : envUrl;
-const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseAnonKey = getEnvVar('PUBLIC_SUPABASE_ANON_KEY', '');
 
 if (!supabaseAnonKey) {
   console.warn('PUBLIC_SUPABASE_ANON_KEY is not set. Authentication will not work.');

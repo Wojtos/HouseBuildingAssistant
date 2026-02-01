@@ -1,0 +1,29 @@
+# Fly.io configuration for HomeBuild Frontend
+# See https://fly.io/docs/reference/configuration/
+
+app = 'homebuild-frontend'
+primary_region = 'arn'
+
+[build]
+  [build.args]
+    # These are PUBLIC keys (safe to expose) - needed at build time for client-side JS
+    PUBLIC_SUPABASE_URL = "https://dlefnrxlyzdrnlphzjfs.supabase.co"
+    PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsZWZucnhseXpkcm5scGh6amZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5NjQwNjgsImV4cCI6MjA4NTU0MDA2OH0.JaVMIFNMoesGkbTrKKByGnkWM-o8F0evo79Sw1Ld3lA"
+    PUBLIC_API_URL = "https://homebuild-backend.fly.dev"
+
+[env]
+  PORT = '8080'
+  HOST = '0.0.0.0'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1

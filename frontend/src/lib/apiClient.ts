@@ -8,9 +8,24 @@ import { getAccessToken } from './supabaseClient';
 import type { ErrorResponse } from '../types/api';
 
 /**
+ * Get environment variable with SSR support
+ */
+const getEnvVar = (key: string, fallback: string): string => {
+  // Try process.env first (for SSR runtime)
+  if (typeof process !== 'undefined' && process.env?.[key]) {
+    return process.env[key] as string;
+  }
+  // Fall back to import.meta.env (build-time for client, runtime for dev)
+  const metaEnv = import.meta.env as Record<string, string>;
+  return metaEnv[key] || fallback;
+};
+
+/**
  * Base API URL (backend service)
  */
-const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:5001';
+// Default fallback for local Docker development (port 5001)
+// CI and production should set PUBLIC_API_URL explicitly
+const API_BASE_URL = getEnvVar('PUBLIC_API_URL', 'http://localhost:5001');
 
 /**
  * Generic fetch wrapper with authentication and error handling

@@ -8,8 +8,8 @@ import { test, expect, TEST_USER } from './fixtures/auth.fixture';
  * 
  * Prerequisites:
  * - Test user exists: e2e@e2e.com (from .env.test)
- * - Frontend running on localhost:4321
- * - Backend API available
+ * - Frontend running on localhost:4001
+ * - Backend API available on localhost:8000
  */
 test.describe('Create Project Flow', () => {
   /**
