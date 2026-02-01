@@ -234,6 +234,8 @@ jobs:
     needs: [lint, unit-test]  # e2e-test removed while disabled
     runs-on: ubuntu-latest
     if: success()
+    permissions:
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
