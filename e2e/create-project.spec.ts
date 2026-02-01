@@ -95,6 +95,26 @@ test.describe('Create Project Flow', () => {
     page,
     createProjectPage,
   }) => {
+    // Capture network requests for debugging
+    const apiRequests: { url: string; status?: number; error?: string }[] = [];
+    page.on('request', request => {
+      if (request.url().includes('/api/projects')) {
+        apiRequests.push({ url: request.url() });
+      }
+    });
+    page.on('response', response => {
+      if (response.url().includes('/api/projects')) {
+        const req = apiRequests.find(r => r.url === response.url());
+        if (req) req.status = response.status();
+      }
+    });
+    page.on('requestfailed', request => {
+      if (request.url().includes('/api/projects')) {
+        const req = apiRequests.find(r => r.url === request.url());
+        if (req) req.error = request.failure()?.errorText || 'Unknown error';
+      }
+    });
+
     // Arrange: Navigate to create project page
     await createProjectPage.goto();
     
@@ -104,8 +124,15 @@ test.describe('Create Project Flow', () => {
     // Act: Fill name and submit
     await createProjectPage.createProject({ name: projectName });
 
-    // Assert: Should redirect to project chat page
-    await createProjectPage.expectCreateSuccess();
+    // Debug: Log API request info on failure
+    try {
+      // Assert: Should redirect to project chat page
+      await createProjectPage.expectCreateSuccess();
+    } catch (error) {
+      console.error('API Requests during test:', JSON.stringify(apiRequests, null, 2));
+      console.error('Current URL:', page.url());
+      throw error;
+    }
   });
 
   test('should successfully create a project with all fields', async ({ 

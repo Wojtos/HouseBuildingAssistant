@@ -57,8 +57,19 @@ export class AuthPage {
 
   /**
    * Submit the login/signup form
+   * Waits for the button to be enabled before clicking (React state updates are async)
    */
   async submit(): Promise<void> {
+    // Wait for button to be enabled (form validation completes after state updates)
+    await this.submitButton.waitFor({ state: 'visible' });
+    await this.page.waitForFunction(
+      (selector) => {
+        const button = document.querySelector(selector) as HTMLButtonElement;
+        return button && !button.disabled;
+      },
+      'button[type="submit"]',
+      { timeout: 5000 }
+    );
     await this.submitButton.click();
   }
 
