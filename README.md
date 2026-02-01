@@ -1,3 +1,5 @@
+LOL
+
 # HomeBuild AI Assistant
 
 An AI-powered assistant for home building projects, from plot selection to furnishing.
