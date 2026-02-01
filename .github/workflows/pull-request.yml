@@ -125,12 +125,42 @@ jobs:
         run: |
           mkdir -p .ai
           cat > .ai/.env.test << EOF
-          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
+          PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
           E2E_USERNAME=${{ secrets.E2E_USERNAME }}
           E2E_PASSWORD=${{ secrets.E2E_PASSWORD }}
           BASE_URL=http://localhost:4001
           EOF
+
+      - name: Create frontend environment file
+        run: |
+          cat > frontend/.env << EOF
+          PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
+          PUBLIC_API_URL=http://localhost:8000
+          EOF
+
+      - name: Create backend environment file
+        run: |
+          cat > backend/.env << EOF
+          SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+          CORS_ORIGINS=http://localhost:4001
+          EOF
+
+      - name: Start backend server
+        run: |
+          cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          echo "Waiting for backend to start..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/health > /dev/null; then
+              echo "Backend is ready!"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 1
+          done
 
       - name: Run E2E tests
         run: make e2e-ci

@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from app.core.memory_domains import MEMORY_DOMAINS
 
-
 # Type for memory domains
 MemoryDomain = Literal[
     "LAND_FEASIBILITY",
@@ -31,7 +30,7 @@ MemoryDomain = Literal[
 
 class ExtractedFact(BaseModel):
     """A single fact extracted from conversation or document."""
-    
+
     id: str = Field(..., description="Unique identifier for this fact")
     domain: MemoryDomain = Field(..., description="Memory domain this fact belongs to")
     key: str = Field(..., description="Fact key/name (e.g., 'total_budget', 'general_contractor')")
@@ -43,14 +42,14 @@ class ExtractedFact(BaseModel):
 
 class FactExtractionResult(BaseModel):
     """Result of fact extraction from content."""
-    
+
     facts: List[ExtractedFact] = Field(default_factory=list)
     has_facts: bool = Field(default=False)
 
 
 class FactConfirmationRequest(BaseModel):
     """Request to confirm and store extracted facts."""
-    
+
     confirmed_fact_ids: List[str] = Field(..., description="IDs of facts user confirmed")
     rejected_fact_ids: List[str] = Field(default_factory=list, description="IDs user rejected")
     facts: List[ExtractedFact] = Field(..., description="Full list of extracted facts")
@@ -58,10 +57,12 @@ class FactConfirmationRequest(BaseModel):
 
 class FactConfirmationResponse(BaseModel):
     """Response after storing confirmed facts."""
-    
+
     stored_count: int = Field(..., description="Number of facts stored")
     rejected_count: int = Field(..., description="Number of facts rejected")
-    updated_domains: List[str] = Field(default_factory=list, description="Domains that were updated")
+    updated_domains: List[str] = Field(
+        default_factory=list, description="Domains that were updated"
+    )
 
 
 # JSON Schema for LLM structured output
@@ -109,19 +110,19 @@ FACT_EXTRACTION_SCHEMA = {
 
 class ChatResponseWithFacts(BaseModel):
     """Extended chat response that may include extracted facts."""
-    
+
     id: UUID = Field(..., description="Message ID")
     role: Literal["assistant"] = Field(default="assistant")
     content: str = Field(..., description="Assistant's response")
     agent_id: str = Field(..., description="Agent that generated the response")
     routing_metadata: dict = Field(default_factory=dict)
     created_at: str = Field(..., description="Creation timestamp")
-    
+
     # Fact extraction fields (UC-3)
     extracted_facts: Optional[List[ExtractedFact]] = Field(
         None, description="Facts extracted from this exchange (pending confirmation)"
     )
-    
+
     # Context metadata (UC-0, UC-1, UC-2, UC-4)
     context_metadata: Optional[dict] = Field(
         None, description="Metadata about context used in response"

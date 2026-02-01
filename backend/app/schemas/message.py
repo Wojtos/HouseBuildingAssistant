@@ -15,13 +15,14 @@ from pydantic import BaseModel, Field
 
 from app.schemas.common import PaginationInfo, PaginationParams
 
-
 # =============================================================================
 # ENUMS
 # =============================================================================
 
+
 class MessageRole(str, Enum):
     """Message role in chat history"""
+
     USER = "user"
     ASSISTANT = "assistant"
 
@@ -30,16 +31,16 @@ class MessageRole(str, Enum):
 # QUERY PARAMETERS
 # =============================================================================
 
+
 class MessageListParams(PaginationParams):
     """
     Message list query parameters.
-    
+
     GET /api/projects/{project_id}/messages query params
     Extends common pagination with time-based filters.
     """
-    limit: int = Field(
-        default=50, ge=1, le=100, description="Items per page (max 100)"
-    )
+
+    limit: int = Field(default=50, ge=1, le=100, description="Items per page (max 100)")
     before: Optional[datetime] = Field(
         default=None,
         description="Get messages before this timestamp",
@@ -54,13 +55,15 @@ class MessageListParams(PaginationParams):
 # RESPONSE DTOs
 # =============================================================================
 
+
 class MessageItem(BaseModel):
     """
     Message item DTO.
-    
+
     Individual message in chat history.
     Derived from: Message model (excludes user_id, routing_metadata for list view)
     """
+
     id: UUID = Field(description="Message unique identifier")
     project_id: UUID = Field(description="Associated project ID")
     role: MessageRole = Field(description="Message author role (user/assistant)")
@@ -84,9 +87,10 @@ class MessageItem(BaseModel):
 class MessageListResponse(BaseModel):
     """
     Paginated message list response.
-    
+
     GET /api/projects/{project_id}/messages response
     """
+
     data: list[MessageItem] = Field(description="List of messages")
     pagination: PaginationInfo = Field(description="Pagination metadata")
 
@@ -94,10 +98,11 @@ class MessageListResponse(BaseModel):
 class RoutingMetadata(BaseModel):
     """
     Routing metadata included in chat response.
-    
+
     Derived from: routing_metadata in Message model
     Provides transparency about agent selection.
     """
+
     confidence: float = Field(
         ge=0.0,
         le=1.0,
@@ -111,9 +116,10 @@ class RoutingMetadata(BaseModel):
 class ContextMetadata(BaseModel):
     """
     Metadata about context used in generating the response.
-    
+
     Tracks which context sources were used (UC-0, UC-1, UC-2, UC-4).
     """
+
     used_project_context: bool = Field(
         default=False, description="Whether project context was included (UC-0)"
     )
@@ -126,17 +132,16 @@ class ContextMetadata(BaseModel):
     used_web_search: bool = Field(
         default=False, description="Whether web search was performed (UC-2)"
     )
-    document_count: int = Field(
-        default=0, description="Number of document chunks used"
-    )
+    document_count: int = Field(default=0, description="Number of document chunks used")
 
 
 class ExtractedFactSummary(BaseModel):
     """
     Summary of an extracted fact for chat response.
-    
+
     Used in ChatResponse to show facts pending confirmation.
     """
+
     id: str = Field(..., description="Unique identifier for this fact")
     domain: str = Field(..., description="Memory domain")
     key: str = Field(..., description="Fact key")
@@ -149,18 +154,19 @@ class ExtractedFactSummary(BaseModel):
 class ChatResponse(BaseModel):
     """
     Chat response DTO.
-    
+
     POST /api/projects/{project_id}/chat response
     Returns only the assistant message (user message not echoed back).
-    
+
     Enhanced with:
     - UC-3: Extracted facts pending confirmation
     - Context metadata showing what sources were used
-    
+
     Notes:
     - Only the assistant message is returned
     - Frontend already has the user's message content from the request
     """
+
     id: UUID = Field(description="Message unique identifier")
     role: Literal["assistant"] = Field(
         default="assistant",
@@ -174,13 +180,13 @@ class ChatResponse(BaseModel):
         description="Information about agent routing decision",
     )
     created_at: datetime = Field(description="Response timestamp")
-    
+
     # UC-3: Extracted facts pending confirmation
     extracted_facts: Optional[List[ExtractedFactSummary]] = Field(
         default=None,
         description="Facts extracted from this exchange (pending user confirmation)",
     )
-    
+
     # Context metadata (UC-0, UC-1, UC-2, UC-4)
     context_metadata: Optional[ContextMetadata] = Field(
         default=None,
@@ -191,9 +197,10 @@ class ChatResponse(BaseModel):
 class MessageFeedbackResponse(BaseModel):
     """
     Message feedback response DTO.
-    
+
     POST /api/projects/{project_id}/messages/{message_id}/feedback response
     """
+
     id: UUID = Field(description="Message unique identifier")
     csat_rating: int = Field(
         ge=1,
@@ -207,26 +214,28 @@ class MessageFeedbackResponse(BaseModel):
 # REQUEST COMMAND MODELS
 # =============================================================================
 
+
 class ChatRequest(BaseModel):
     """
     Chat command model.
-    
+
     POST /api/projects/{project_id}/chat request
-    
+
     Validation:
     - content is required and must be non-empty
     - Maximum content length: 4000 characters
-    
+
     Side Effects:
     - Creates messages records for both user and assistant
     - Creates routing_audits record for the assistant message
     - May update project_memory if agent extracts new facts
     - Creates usage_logs record for token consumption
     - Performs vector search on document chunks for context
-    
+
     Performance:
     - Maximum response time: 10 seconds (as per PRD)
     """
+
     content: str = Field(
         min_length=1,
         max_length=4000,
@@ -237,15 +246,15 @@ class ChatRequest(BaseModel):
 class MessageFeedbackRequest(BaseModel):
     """
     Message feedback command model.
-    
+
     POST /api/projects/{project_id}/messages/{message_id}/feedback request
     Derived from: MessageUpdate model
-    
+
     Validation:
     - csat_rating must be an integer between 1 and 5
     - Can only rate assistant messages (role = 'assistant')
     """
+
     csat_rating: Literal[1, 2, 3, 4, 5] = Field(
         description="Satisfaction rating from 1 (poor) to 5 (excellent)",
     )
-

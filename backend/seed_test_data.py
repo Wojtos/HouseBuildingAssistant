@@ -93,7 +93,7 @@ def main():
                 "PROCUREMENT": {},
                 "FINISHES": {},
                 "GENERAL": {},
-            }
+            },
         }
 
         try:
@@ -156,6 +156,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Error seeding data: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

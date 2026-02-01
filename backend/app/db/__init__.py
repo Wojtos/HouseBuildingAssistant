@@ -34,7 +34,7 @@ from app.db.models import (
     WebSearchCache,
     WebSearchCacheInsert,
 )
-from app.db.supabase import supabase_client
+from app.db.supabase import get_supabase_client, supabase_client
 
 __all__ = [
     # Enums
@@ -72,6 +72,7 @@ __all__ = [
     "UsageLogInsert",
     # Supabase client
     "supabase_client",
+    "get_supabase_client",
     # FastAPI dependency
     "get_supabase",
 ]
@@ -80,14 +81,13 @@ __all__ = [
 def get_supabase() -> Generator[Client, None, None]:
     """
     FastAPI dependency for injecting Supabase client into route handlers.
-    
+
     Usage:
         @app.get("/projects")
         async def get_projects(supabase: Client = Depends(get_supabase)):
             response = supabase.table("projects").select("*").execute()
             return response.data
-    
+
     This is the Python/FastAPI equivalent of Astro's middleware context.locals.supabase
     """
-    yield supabase_client
-
+    yield get_supabase_client()

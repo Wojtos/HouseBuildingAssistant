@@ -7,7 +7,6 @@ with proper context injection for UC-0, UC-1, UC-2, UC-4.
 
 from typing import Optional
 
-
 # Legal disclaimer included in all agent responses
 LEGAL_DISCLAIMER = """
 IMPORTANT DISCLAIMER:
@@ -38,7 +37,6 @@ Focus areas:
 - Topography and drainage assessment
 - Utility access and connectivity
 - Environmental considerations""",
-
     "REGULATORY_PERMITTING_AGENT": """You are a Regulatory & Permitting expert for home building.
 You help with zoning codes, permits, regulations, and inspection requirements.
 Always remind users to verify with local authorities as regulations vary by location.
@@ -49,7 +47,6 @@ Focus areas:
 - Code compliance requirements
 - Inspection scheduling
 - Variance and exemption processes""",
-
     "ARCHITECTURAL_DESIGN_AGENT": """You are an Architectural Design consultant for home building.
 You help with layouts, design concepts, material selection, and energy efficiency.
 Focus on practical design solutions that balance aesthetics with functionality.
@@ -60,7 +57,6 @@ Focus areas:
 - Material specifications
 - Energy efficiency and sustainability
 - Universal design principles""",
-
     "FINANCE_LEGAL_AGENT": """You are a Finance & Legal advisor for home construction.
 You help with construction loans, budgeting, contracts, and insurance.
 Always include disclaimers that users should consult licensed professionals for legal/financial decisions.
@@ -71,7 +67,6 @@ Focus areas:
 - Contract review and negotiation
 - Insurance requirements
 - Payment scheduling""",
-
     "SITE_PREP_FOUNDATION_AGENT": """You are a Site Preparation & Foundation specialist.
 You help with excavation, grading, drainage, and foundation types.
 Emphasize the importance of proper site prep and soil analysis.
@@ -82,7 +77,6 @@ Focus areas:
 - Foundation design and types
 - Waterproofing and drainage
 - Retaining walls and slopes""",
-
     "SHELL_SYSTEMS_AGENT": """You are a Structural Shell & Systems expert.
 You help with framing, roofing, and MEP systems (HVAC, plumbing, electrical).
 Focus on code compliance and proper installation sequences.
@@ -93,7 +87,6 @@ Focus areas:
 - HVAC system design and installation
 - Plumbing and water systems
 - Electrical systems and panels""",
-
     "PROCUREMENT_QUALITY_AGENT": """You are a Procurement & Quality Control specialist.
 You help with material selection, cost estimation, scheduling, and quality checks.
 Emphasize the importance of quality materials and proper inspections.
@@ -104,7 +97,6 @@ Focus areas:
 - Schedule management
 - Quality assurance and inspections
 - Cost tracking and control""",
-
     "FINISHES_FURNISHING_AGENT": """You are an Interior Finishes & Furnishing consultant.
 You help with interior finishes, fixtures, cabinetry, and smart home integration.
 Focus on practical choices that balance quality with budget.
@@ -115,7 +107,6 @@ Focus areas:
 - Fixtures and appliances
 - Smart home technology
 - Furniture and decor planning""",
-
     "TRIAGE_MEMORY_AGENT": """You are a helpful home building assistant.
 You handle general queries, provide project summaries, and answer questions that don't fit specific domains.
 Be friendly and guide users to more specific questions when appropriate.
@@ -132,10 +123,10 @@ Capabilities:
 def get_agent_prompt(agent_id: str) -> str:
     """
     Get specialized system prompt for each agent.
-    
+
     Args:
         agent_id: Agent identifier
-        
+
     Returns:
         Agent's system prompt
     """
@@ -154,10 +145,10 @@ def build_agent_prompt(
 ) -> str:
     """
     Build a complete agent prompt with all context sections.
-    
+
     Sections are only included if they have content.
     Order follows UC specification for optimal context use.
-    
+
     Args:
         agent_instructions: Base agent-specific instructions
         project_context: UC-0 project context block
@@ -167,48 +158,50 @@ def build_agent_prompt(
         chat_history: Recent conversation history
         user_query: User's current message
         include_disclaimer: Whether to include legal disclaimer
-        
+
     Returns:
         Complete assembled prompt string
     """
     sections = []
-    
+
     # Agent instructions (always present)
     sections.append(f"[SYSTEM INSTRUCTIONS]\n{agent_instructions}")
-    
+
     # Legal disclaimer
     if include_disclaimer:
         sections.append(LEGAL_DISCLAIMER)
-    
+
     # Context usage instructions (if any context is provided)
     if project_context or project_memory or retrieved_documents or web_search_results:
         sections.append(CONTEXT_USAGE_INSTRUCTIONS)
-    
+
     # Project context (UC-0) - most important for grounding
     if project_context:
         sections.append(project_context)
-    
+
     # Project memory (UC-1) - structured facts
     if project_memory:
         sections.append(project_memory)
-    
+
     # Retrieved documents (UC-4) - relevant document chunks
     if retrieved_documents:
         sections.append(retrieved_documents)
-    
+
     # Web search results (UC-2) - real-time information
     if web_search_results:
-        sections.append(f"=== WEB SEARCH RESULTS ===\n{web_search_results}\n"
-                       "Note: Information above is from recent web search. Cite sources when using.")
-    
+        sections.append(
+            f"=== WEB SEARCH RESULTS ===\n{web_search_results}\n"
+            "Note: Information above is from recent web search. Cite sources when using."
+        )
+
     # Chat history - recent conversation
     if chat_history:
         sections.append(f"[RECENT CONVERSATION]\n{chat_history}")
-    
+
     # User query
     if user_query:
         sections.append(f"[USER MESSAGE]\n{user_query}")
-    
+
     return "\n\n".join(sections)
 
 
@@ -245,7 +238,7 @@ Return empty facts array if no concrete facts are found."""
 def build_web_search_prompt(location: Optional[str] = None) -> str:
     """Get the system prompt for web search (UC-2)."""
     location_context = f"\nUser's project location: {location}" if location else ""
-    
+
     return f"""You are a research assistant helping with home building questions.
 Search the web for current, accurate information.
 Always cite your sources with URLs when providing information from search results.

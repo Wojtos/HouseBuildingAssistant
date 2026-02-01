@@ -611,8 +611,9 @@ export function ProjectFilesView({ projectId }: ProjectFilesViewProps) {
       {pagination && pagination.total_pages > 1 && (
         <div className="mt-6">
           <PaginationControls
-            currentPage={pagination.page}
+            page={pagination.page}
             totalPages={pagination.total_pages}
+            limit={pagination.limit}
             totalItems={pagination.total_items}
             onPageChange={handlePageChange}
           />

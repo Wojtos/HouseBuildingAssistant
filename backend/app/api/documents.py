@@ -20,24 +20,24 @@ from app.api.dependencies import get_current_user, verify_project_ownership
 from app.db.models import Project
 from app.schemas.common import PaginationInfo
 from app.schemas.document import (
-    DocumentListParams,
-    DocumentListResponse,
-    DocumentCreateRequest,
-    DocumentCreateResponse,
-    DocumentConfirmResponse,
-    DocumentDetailResponse,
-    DocumentDeleteResponse,
     DocumentChunkListParams,
     DocumentChunkListResponse,
+    DocumentConfirmResponse,
+    DocumentCreateRequest,
+    DocumentCreateResponse,
+    DocumentDeleteResponse,
+    DocumentDetailResponse,
+    DocumentListParams,
+    DocumentListResponse,
+    DocumentProcessingState,
     DocumentSearchRequest,
     DocumentSearchResponse,
-    DocumentProcessingState,
 )
-from app.services.document_service import DocumentService, get_document_service
 from app.services.document_retrieval_service import (
     DocumentRetrievalService,
     get_document_retrieval_service,
 )
+from app.services.document_service import DocumentService, get_document_service
 
 logger = logging.getLogger(__name__)
 
@@ -106,14 +106,8 @@ async def list_documents(
         )
 
     except Exception as e:
-        logger.error(
-            f"Error listing documents for project {project_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error(f"Error listing documents for project {project_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post(
@@ -157,10 +151,7 @@ async def create_document(
     try:
         # File size validation (already done by Pydantic, but double-check)
         if request.file_size > 10485760:  # 10MB
-            raise HTTPException(
-                status_code=413,
-                detail="File size exceeds 10MB limit"
-            )
+            raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
 
         document_response = await document_service.create_document(
             project_id=project_id,
@@ -174,14 +165,8 @@ async def create_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            f"Error creating document for project {project_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error(f"Error creating document for project {project_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post(
@@ -227,24 +212,14 @@ async def confirm_document_upload(
     except Exception as e:
         if "not found in storage" in str(e).lower():
             raise HTTPException(
-                status_code=400,
-                detail="File not found in storage. Please upload the file first."
+                status_code=400, detail="File not found in storage. Please upload the file first."
             )
 
         if "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=404,
-                detail="Document not found"
-            )
+            raise HTTPException(status_code=404, detail="Document not found")
 
-        logger.error(
-            f"Error confirming upload for document {document_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error(f"Error confirming upload for document {document_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get(
@@ -287,19 +262,10 @@ async def get_document(
 
     except Exception as e:
         if "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=404,
-                detail="Document not found"
-            )
+            raise HTTPException(status_code=404, detail="Document not found")
 
-        logger.error(
-            f"Error getting document {document_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error(f"Error getting document {document_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete(
@@ -342,19 +308,10 @@ async def delete_document(
 
     except Exception as e:
         if "not found" in str(e).lower() or "already deleted" in str(e).lower():
-            raise HTTPException(
-                status_code=404,
-                detail="Document not found or already deleted"
-            )
+            raise HTTPException(status_code=404, detail="Document not found or already deleted")
 
-        logger.error(
-            f"Error deleting document {document_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error(f"Error deleting document {document_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get(
@@ -412,19 +369,10 @@ async def get_document_chunks(
 
     except Exception as e:
         if "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=404,
-                detail="Document not found"
-            )
+            raise HTTPException(status_code=404, detail="Document not found")
 
-        logger.error(
-            f"Error getting chunks for document {document_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error(f"Error getting chunks for document {document_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post(
@@ -480,11 +428,5 @@ async def search_documents(
         )
 
     except Exception as e:
-        logger.error(
-            f"Error searching documents for project {project_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Search service temporarily unavailable"
-        )
+        logger.error(f"Error searching documents for project {project_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Search service temporarily unavailable")

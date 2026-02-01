@@ -11,7 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from supabase import Client
 
-from app.api.dependencies import get_current_user, verify_project_ownership, get_openrouter_service
+from app.api.dependencies import get_current_user, get_openrouter_service, verify_project_ownership
 from app.clients.openrouter_service import OpenRouterService
 from app.db import Project, get_supabase
 from app.schemas.fact_extraction import (
@@ -63,22 +63,22 @@ async def confirm_facts(
 ):
     """
     Confirm and store user-approved facts in project memory.
-    
+
     **Authentication:** Required (Bearer token in Authorization header)
-    
+
     **Authorization:** User must own the project
-    
+
     **Request Body:**
     - `confirmed_fact_ids`: List of fact IDs the user confirmed
     - `rejected_fact_ids`: List of fact IDs the user rejected
     - `facts`: Full list of extracted facts with all details
-    
+
     **Processing:**
     1. Filter facts to only confirmed ones
     2. Group facts by memory domain
     3. Store in project memory
     4. Return summary of stored facts
-    
+
     **Example:**
     ```
     POST /api/projects/{project_id}/facts/confirm
@@ -97,51 +97,48 @@ async def confirm_facts(
         # Parse and validate request body with detailed logging
         body = await raw_request.json()
         logger.info(f"Received fact confirmation request: {body}")
-        
+
         try:
             request = FactConfirmationRequest(**body)
         except Exception as validation_error:
             logger.error(f"Validation error for facts/confirm: {validation_error}")
             logger.error(f"Request body was: {body}")
             raise HTTPException(status_code=422, detail=str(validation_error))
-        
+
         # Initialize services
         memory_service = get_project_memory_service(supabase)
         fact_service = get_fact_extraction_service(openrouter_service, memory_service)
-        
+
         # Filter to only confirmed facts
         confirmed_fact_ids_set = set(request.confirmed_fact_ids)
         confirmed_facts = [f for f in request.facts if f.id in confirmed_fact_ids_set]
-        
+
         if not confirmed_facts:
             return FactConfirmationResponse(
                 stored_count=0,
                 rejected_count=len(request.rejected_fact_ids),
                 updated_domains=[],
             )
-        
+
         # Store confirmed facts
         result = await fact_service.store_confirmed_facts(
             project_id=project_id,
             facts=confirmed_facts,
         )
-        
+
         logger.info(
             f"User {user_id} confirmed {result['stored_count']} facts for project {project_id}"
         )
-        
+
         return FactConfirmationResponse(
             stored_count=result["stored_count"],
             rejected_count=len(request.rejected_fact_ids),
             updated_domains=result["updated_domains"],
         )
-    
+
     except HTTPException:
         raise
-    
+
     except Exception as e:
         logger.error(f"Error confirming facts for project {project_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to store facts"
-        )
+        raise HTTPException(status_code=500, detail="Failed to store facts")

@@ -49,16 +49,36 @@ export class AuthPage {
 
   /**
    * Fill login credentials
+   * Waits for React hydration to complete before filling
    */
   async fillCredentials(email: string, password: string): Promise<void> {
+    // Wait for the form inputs to be ready (React hydration complete)
+    await this.emailInput.waitFor({ state: 'visible' });
+    await this.passwordInput.waitFor({ state: 'visible' });
+    
+    // Click to focus first to ensure React event handlers are attached
+    await this.emailInput.click();
     await this.emailInput.fill(email);
+    
+    await this.passwordInput.click();
     await this.passwordInput.fill(password);
+    
+    // Wait a moment for React state to update after filling
+    await this.page.waitForTimeout(100);
   }
 
   /**
    * Submit the login/signup form
+   * Waits for the button to be enabled before clicking (React state updates are async)
    */
   async submit(): Promise<void> {
+    // Wait for button to be visible first
+    await this.submitButton.waitFor({ state: 'visible' });
+    
+    // Wait for button to be enabled with longer timeout for CI environments
+    // React state updates can be slow in CI due to resource constraints
+    await expect(this.submitButton).toBeEnabled({ timeout: 10000 });
+    
     await this.submitButton.click();
   }
 

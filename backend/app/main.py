@@ -5,13 +5,17 @@ Main application entry point
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.api import documents, facts, messages, profiles, project_memory, projects
 from app.core.config import settings
-from app.api import projects, messages, profiles, documents, project_memory, facts
 
 app = FastAPI(
     title=settings.api_title,
     description="Backend API for HomeBuild AI Assistant",
     version=settings.api_version,
+    # Disable automatic trailing slash redirects to avoid CORS issues
+    # FastAPI's 307 redirects don't work well with CORS preflight requests
+    redirect_slashes=False,
 )
 
 # CORS middleware configuration
@@ -42,4 +46,3 @@ async def root():
 async def health():
     """Health check endpoint"""
     return {"status": "ok"}
-

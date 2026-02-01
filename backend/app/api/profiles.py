@@ -61,19 +61,10 @@ async def get_my_profile(
     except Exception as e:
         if "not found" in str(e).lower():
             logger.error(f"Profile not found for user {user_id}")
-            raise HTTPException(
-                status_code=404,
-                detail="Profile not found"
-            )
+            raise HTTPException(status_code=404, detail="Profile not found")
 
-        logger.error(
-            f"Error retrieving profile for user {user_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error(f"Error retrieving profile for user {user_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put(
@@ -120,16 +111,7 @@ async def update_my_profile(
     except Exception as e:
         if "not found" in str(e).lower():
             logger.error(f"Profile not found for user {user_id}")
-            raise HTTPException(
-                status_code=404,
-                detail="Profile not found"
-            )
+            raise HTTPException(status_code=404, detail="Profile not found")
 
-        logger.error(
-            f"Error updating profile for user {user_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error(f"Error updating profile for user {user_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

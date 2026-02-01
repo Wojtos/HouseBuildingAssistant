@@ -6,15 +6,16 @@ Tests for:
 - PUT /api/profiles/me
 """
 
-import pytest
-from uuid import uuid4
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
+import pytest
 from fastapi import HTTPException
 
-from app.schemas.profile import ProfileResponse, ProfileUpdateRequest
 from app.db.enums import MeasurementUnit
 from app.db.models import Profile
-from datetime import datetime
+from app.schemas.profile import ProfileResponse, ProfileUpdateRequest
 
 
 class TestGetMyProfile:
