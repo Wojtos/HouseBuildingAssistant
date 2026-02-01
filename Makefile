@@ -1,7 +1,8 @@
 A.PHONY: help install install-ci dev build up down stop clean logs backend frontend \
         test test-unit test-unit-coverage e2e e2e-ui e2e-headed e2e-report e2e-ci \
         lint lint-python lint-typescript lint-check \
-        build-frontend deploy-cloudflare
+        build-frontend deploy-cloudflare \
+        deploy deploy-backend deploy-frontend fly-logs-backend fly-logs-frontend fly-status
 
 # =============================================================================
 # Help
@@ -137,4 +138,29 @@ deploy-cloudflare: build-frontend ## Build and prepare for Cloudflare Pages depl
 	@echo "  Build command: make build-frontend"
 	@echo "  Build output directory: frontend/dist"
 	@echo "  Root directory: /"
+
+# =============================================================================
+# Fly.io Deployment
+# =============================================================================
+
+deploy: deploy-backend deploy-frontend ## Deploy both services to Fly.io
+
+deploy-backend: ## Deploy backend to Fly.io
+	cd backend && fly deploy
+
+deploy-frontend: ## Deploy frontend to Fly.io
+	cd frontend && fly deploy
+
+fly-logs-backend: ## View backend logs on Fly.io
+	fly logs -a homebuild-backend
+
+fly-logs-frontend: ## View frontend logs on Fly.io
+	fly logs -a homebuild-frontend
+
+fly-status: ## Check status of Fly.io apps
+	@echo "=== Backend Status ==="
+	fly status -a homebuild-backend
+	@echo ""
+	@echo "=== Frontend Status ==="
+	fly status -a homebuild-frontend
 

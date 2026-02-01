@@ -13,6 +13,7 @@ import {
   memo,
   type RefObject,
 } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { CsatControl } from './CsatControl';
 import type { ChatMessageVM } from '../../types/viewModels';
 
@@ -115,9 +116,15 @@ const MessageBubble = memo(function MessageBubble({
         } ${isPending ? 'animate-pulse' : ''}`}
       >
         {/* Message content */}
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {displayContent}
-        </p>
+        {isUser ? (
+          <p className="whitespace-pre-wrap break-words text-sm">
+            {displayContent}
+          </p>
+        ) : (
+          <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-a:text-blue-600 prose-a:underline prose-strong:font-semibold prose-code:bg-gray-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-gray-800 prose-code:before:content-none prose-code:after:content-none">
+            <ReactMarkdown>{displayContent}</ReactMarkdown>
+          </div>
+        )}
 
         {/* Timestamp */}
         <p

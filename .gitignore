@@ -74,3 +74,6 @@ coverage-*-html/
 # Playwright
 /playwright-report/
 /test-results/
+
+# Fly.io
+.fly/

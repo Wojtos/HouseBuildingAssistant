@@ -18,4 +18,9 @@ export default defineConfig({
     port: 4001,
     host: true,
   },
+  vite: {
+    preview: {
+      allowedHosts: ['homebuild-frontend.fly.dev'],
+    },
+  },
 });

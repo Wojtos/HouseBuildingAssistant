@@ -121,33 +121,78 @@ jobs:
       - name: Install Playwright Chromium browser
         run: npx playwright install chromium --with-deps
 
+      - name: Verify required secrets are configured
+        run: |
+          MISSING_SECRETS=""
+          if [ -z "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS} NEXT_PUBLIC_SUPABASE_URL"
+          fi
+          if [ -z "${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS} NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY"
+          fi
+          if [ -z "${{ secrets.E2E_USERNAME }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS} E2E_USERNAME"
+          fi
+          if [ -z "${{ secrets.E2E_PASSWORD }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS} E2E_PASSWORD"
+          fi
+          if [ -n "$MISSING_SECRETS" ]; then
+            echo "::error::Missing required secrets:${MISSING_SECRETS}"
+            echo "Please configure these secrets in the GitHub repository settings under the 'integration' environment."
+            exit 1
+          fi
+          echo "✅ All required secrets are configured"
+
       - name: Create E2E test environment file
         run: |
           mkdir -p .ai
           cat > .ai/.env.test << EOF
-          PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
-          E2E_USERNAME=${{ secrets.E2E_USERNAME }}
-          E2E_PASSWORD=${{ secrets.E2E_PASSWORD }}
+          PUBLIC_SUPABASE_URL=${SUPABASE_URL}
+          PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+          E2E_USERNAME=${E2E_USER}
+          E2E_PASSWORD=${E2E_PASS}
           BASE_URL=http://localhost:4001
           EOF
+          # Remove leading whitespace from each line
+          sed -i 's/^[[:space:]]*//' .ai/.env.test
+          echo "E2E test environment file contents:"
+          cat .ai/.env.test
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
+          E2E_USER: ${{ secrets.E2E_USERNAME }}
+          E2E_PASS: ${{ secrets.E2E_PASSWORD }}
 
       - name: Create frontend environment file
         run: |
           cat > frontend/.env << EOF
-          PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
+          PUBLIC_SUPABASE_URL=${SUPABASE_URL}
+          PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
           PUBLIC_API_URL=http://localhost:8000
           EOF
+          # Remove leading whitespace from each line
+          sed -i 's/^[[:space:]]*//' frontend/.env
+          echo "Frontend environment file contents:"
+          cat frontend/.env
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
 
       - name: Create backend environment file
         run: |
           cat > backend/.env << EOF
-          SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+          SUPABASE_URL=${SUPABASE_URL}
+          SUPABASE_KEY=${SUPABASE_KEY}
+          OPENROUTER_API_KEY=${OPENROUTER_KEY}
           CORS_ORIGINS=http://localhost:4001
           EOF
+          # Remove leading whitespace from each line
+          sed -i 's/^[[:space:]]*//' backend/.env
+          echo "Backend environment file created (contents hidden for security)"
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENROUTER_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
       - name: Start backend server
         run: |
