@@ -7,11 +7,12 @@ Tests for:
 - GET /api/projects/{project_id}/memory/audit (TODO - returns 501)
 """
 
-import pytest
-from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import HTTPException
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
+import pytest
+from fastapi import HTTPException
 
 from app.schemas.memory import (
     ProjectMemoryResponse,
@@ -49,7 +50,9 @@ class TestGetProjectMemory:
                 "updated_at": datetime.utcnow().isoformat(),
             }
         ]
-        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_response
+        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value = (
+            mock_response
+        )
 
         # Mock service
         mock_service = AsyncMock()
@@ -92,7 +95,9 @@ class TestGetProjectMemory:
         mock_supabase = MagicMock()
         mock_response = MagicMock()
         mock_response.data = []
-        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_response
+        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value = (
+            mock_response
+        )
 
         # Mock service
         mock_service = AsyncMock()
@@ -154,7 +159,9 @@ class TestUpdateProjectMemory:
                 "updated_at": datetime.utcnow().isoformat(),
             }
         ]
-        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_response
+        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value = (
+            mock_response
+        )
 
         # Mock service
         mock_service = AsyncMock()
@@ -193,7 +200,7 @@ class TestUpdateProjectMemory:
         updated_data = {
             "FINANCE": {
                 "total_budget": 600000,  # Preserved
-                "loan_amount": 400000,   # New
+                "loan_amount": 400000,  # New
             },
         }
 
@@ -208,7 +215,9 @@ class TestUpdateProjectMemory:
                 "updated_at": datetime.utcnow().isoformat(),
             }
         ]
-        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_response
+        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value = (
+            mock_response
+        )
 
         # Mock service
         mock_service = AsyncMock()
@@ -254,7 +263,9 @@ class TestUpdateProjectMemory:
                 "updated_at": datetime.utcnow().isoformat(),
             }
         ]
-        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_response
+        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value = (
+            mock_response
+        )
 
         # Mock service
         mock_service = AsyncMock()

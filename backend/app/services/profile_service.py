@@ -12,7 +12,7 @@ from uuid import UUID
 from fastapi import Depends
 from supabase import Client
 
-from app.db import get_supabase, Profile, ProfileInsert
+from app.db import Profile, ProfileInsert, get_supabase
 from app.schemas.profile import ProfileResponse, ProfileUpdateRequest
 
 logger = logging.getLogger(__name__)
@@ -44,12 +44,7 @@ class ProfileService:
             Exception: If profile not found or database query fails
         """
         try:
-            response = (
-                self.supabase.table("profiles")
-                .select("*")
-                .eq("id", str(user_id))
-                .execute()
-            )
+            response = self.supabase.table("profiles").select("*").eq("id", str(user_id)).execute()
 
             if not response.data:
                 logger.error(f"Profile not found for user {user_id}")
@@ -62,10 +57,7 @@ class ProfileService:
             return Profile(**profile_data)
 
         except Exception as e:
-            logger.error(
-                f"Error retrieving profile for user {user_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Error retrieving profile for user {user_id}: {e}", exc_info=True)
             raise
 
     async def update_profile(
@@ -98,10 +90,7 @@ class ProfileService:
                 return await self.get_profile(user_id)
 
             response = (
-                self.supabase.table("profiles")
-                .update(update_data)
-                .eq("id", str(user_id))
-                .execute()
+                self.supabase.table("profiles").update(update_data).eq("id", str(user_id)).execute()
             )
 
             if not response.data:
@@ -110,17 +99,13 @@ class ProfileService:
             updated_profile = response.data[0]
 
             logger.info(
-                f"Updated profile for user {user_id} "
-                f"(fields: {list(update_data.keys())})"
+                f"Updated profile for user {user_id} " f"(fields: {list(update_data.keys())})"
             )
 
             return Profile(**updated_profile)
 
         except Exception as e:
-            logger.error(
-                f"Error updating profile for user {user_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Error updating profile for user {user_id}: {e}", exc_info=True)
             raise
 
 

@@ -80,14 +80,13 @@ __all__ = [
 def get_supabase() -> Generator[Client, None, None]:
     """
     FastAPI dependency for injecting Supabase client into route handlers.
-    
+
     Usage:
         @app.get("/projects")
         async def get_projects(supabase: Client = Depends(get_supabase)):
             response = supabase.table("projects").select("*").execute()
             return response.data
-    
+
     This is the Python/FastAPI equivalent of Astro's middleware context.locals.supabase
     """
     yield supabase_client
-

@@ -11,28 +11,25 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from supabase import Client
 
 from app.api.dependencies import get_current_user, verify_project_ownership
-from app.db import get_supabase, Project
+from app.db import Project, get_supabase
+from app.schemas.common import PaginationInfo
 from app.schemas.memory import (
-    ProjectMemoryResponse,
-    ProjectMemoryUpdateRequest,
     MemoryAuditListParams,
     MemoryAuditListResponse,
+    ProjectMemoryResponse,
+    ProjectMemoryUpdateRequest,
 )
-from app.schemas.common import PaginationInfo
 from app.services.project_memory_service import (
     ProjectMemoryService,
     get_project_memory_service,
 )
-from supabase import Client
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/projects/{project_id}/memory",
-    tags=["project-memory"]
-)
+router = APIRouter(prefix="/projects/{project_id}/memory", tags=["project-memory"])
 
 
 @router.get(
@@ -77,16 +74,14 @@ async def get_project_memory(
 
         # Get the full memory record for metadata
         response = (
-            supabase.table("project_memory")
-            .select("*")
-            .eq("project_id", str(project_id))
-            .execute()
+            supabase.table("project_memory").select("*").eq("project_id", str(project_id)).execute()
         )
 
         if not response.data:
             # Return empty memory structure
             logger.info(f"No memory found for project {project_id}, returning default")
             from datetime import datetime
+
             return ProjectMemoryResponse(
                 id=project_id,  # Temporary ID
                 project_id=project_id,
@@ -104,14 +99,8 @@ async def get_project_memory(
         )
 
     except Exception as e:
-        logger.error(
-            f"Error retrieving memory for project {project_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error(f"Error retrieving memory for project {project_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.patch(
@@ -190,10 +179,7 @@ async def update_project_memory(
 
         # Get updated record for metadata
         response = (
-            supabase.table("project_memory")
-            .select("*")
-            .eq("project_id", str(project_id))
-            .execute()
+            supabase.table("project_memory").select("*").eq("project_id", str(project_id)).execute()
         )
 
         if not response.data:
@@ -202,8 +188,7 @@ async def update_project_memory(
         memory_record = response.data[0]
 
         logger.info(
-            f"Updated memory for project {project_id} "
-            f"(agent: {request.agent_id or 'user'})"
+            f"Updated memory for project {project_id} " f"(agent: {request.agent_id or 'user'})"
         )
 
         return ProjectMemoryResponse(
@@ -214,14 +199,8 @@ async def update_project_memory(
         )
 
     except Exception as e:
-        logger.error(
-            f"Error updating memory for project {project_id}: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error(f"Error updating memory for project {project_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get(
@@ -260,14 +239,9 @@ async def get_memory_audit_trail(
     # TODO: Implement audit trail retrieval
     # This requires extending project_memory_service with get_audit_trail method
 
-    logger.warning(
-        f"Audit trail endpoint called for project {project_id} but not implemented"
-    )
+    logger.warning(f"Audit trail endpoint called for project {project_id} but not implemented")
 
-    raise HTTPException(
-        status_code=501,
-        detail="Audit trail not implemented yet"
-    )
+    raise HTTPException(status_code=501, detail="Audit trail not implemented yet")
 
     # Implementation would look like:
     # try:

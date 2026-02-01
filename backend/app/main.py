@@ -5,8 +5,9 @@ Main application entry point
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.api import documents, facts, messages, profiles, project_memory, projects
 from app.core.config import settings
-from app.api import projects, messages, profiles, documents, project_memory, facts
 
 app = FastAPI(
     title=settings.api_title,
@@ -42,4 +43,3 @@ async def root():
 async def health():
     """Health check endpoint"""
     return {"status": "ok"}
-

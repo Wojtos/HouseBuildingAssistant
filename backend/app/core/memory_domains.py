@@ -40,7 +40,7 @@ DOMAIN_TO_AGENT: dict[str, str] = {v: k for k, v in AGENT_TO_DOMAIN.items()}
 def get_default_memory_structure() -> dict[str, dict]:
     """
     Get default memory structure with domain keys.
-    
+
     Returns:
         Dictionary with domain keys initialized to empty dicts
     """

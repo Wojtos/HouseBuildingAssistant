@@ -18,14 +18,14 @@ from uuid import UUID
 from fastapi import Depends
 from supabase import Client
 
-from app.db import get_supabase, Document, DocumentInsert, DocumentUpdate, DocumentChunk
+from app.db import Document, DocumentChunk, DocumentInsert, DocumentUpdate, get_supabase
 from app.schemas.document import (
-    DocumentListItem,
-    DocumentCreateResponse,
-    DocumentConfirmResponse,
-    DocumentDetailResponse,
-    DocumentDeleteResponse,
     DocumentChunkItem,
+    DocumentConfirmResponse,
+    DocumentCreateResponse,
+    DocumentDeleteResponse,
+    DocumentDetailResponse,
+    DocumentListItem,
     DocumentProcessingState,
 )
 
@@ -100,11 +100,7 @@ class DocumentService:
                 query = query.eq("file_type", file_type)
 
             # Apply ordering and pagination
-            query = (
-                query
-                .order("created_at", desc=True)
-                .range(offset, offset + limit - 1)
-            )
+            query = query.order("created_at", desc=True).range(offset, offset + limit - 1)
 
             # Execute query
             response = query.execute()
@@ -121,9 +117,17 @@ class DocumentService:
                     file_type=doc.get("file_type"),
                     processing_state=DocumentProcessingState(doc["processing_state"]),
                     error_message=doc.get("error_message"),
-                    chunk_count=doc.get("document_chunks", [{}])[0].get("count", 0) if doc.get("document_chunks") else 0,
+                    chunk_count=(
+                        doc.get("document_chunks", [{}])[0].get("count", 0)
+                        if doc.get("document_chunks")
+                        else 0
+                    ),
                     created_at=datetime.fromisoformat(doc["created_at"].replace("Z", "+00:00")),
-                    deleted_at=datetime.fromisoformat(doc["deleted_at"].replace("Z", "+00:00")) if doc.get("deleted_at") else None,
+                    deleted_at=(
+                        datetime.fromisoformat(doc["deleted_at"].replace("Z", "+00:00"))
+                        if doc.get("deleted_at")
+                        else None
+                    ),
                 )
                 for doc in documents_data
             ]
@@ -136,10 +140,7 @@ class DocumentService:
             return documents, total_count
 
         except Exception as e:
-            logger.error(
-                f"Error listing documents for project {project_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Error listing documents for project {project_id}: {e}", exc_info=True)
             raise
 
     async def create_document(
@@ -167,19 +168,21 @@ class DocumentService:
         try:
             # Generate storage path with sanitized filename
             # Remove/replace special characters to avoid URL encoding issues with signed URLs
-            import unicodedata
             import re
-            
+            import unicodedata
+
             # Normalize unicode and remove diacritics
-            sanitized_name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
+            sanitized_name = (
+                unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
+            )
             # Replace spaces with underscores and remove other non-alphanumeric chars except dots and underscores
-            sanitized_name = re.sub(r'[^\w\-_\.]', '_', sanitized_name)
+            sanitized_name = re.sub(r"[^\w\-_\.]", "_", sanitized_name)
             # Remove consecutive underscores
-            sanitized_name = re.sub(r'_+', '_', sanitized_name).strip('_')
+            sanitized_name = re.sub(r"_+", "_", sanitized_name).strip("_")
             # Ensure we have a valid filename
             if not sanitized_name:
-                sanitized_name = 'document'
-            
+                sanitized_name = "document"
+
             timestamp = datetime.utcnow().isoformat().replace(":", "-")
             storage_path = f"{project_id}/{timestamp}_{sanitized_name}"
 
@@ -208,27 +211,31 @@ class DocumentService:
             expiry_seconds = PRESIGNED_URL_EXPIRY_MINUTES * 60
 
             # Create presigned URL for upload
-            presigned_response = self.supabase.storage.from_(STORAGE_BUCKET).create_signed_upload_url(
-                storage_path
-            )
+            presigned_response = self.supabase.storage.from_(
+                STORAGE_BUCKET
+            ).create_signed_upload_url(storage_path)
 
             # Handle different response types from the SDK
-            if hasattr(presigned_response, 'signed_url'):
+            if hasattr(presigned_response, "signed_url"):
                 # SDK returns object with signed_url attribute
                 upload_url = presigned_response.signed_url
             elif isinstance(presigned_response, dict):
                 # SDK returns dict (older versions)
-                upload_url = presigned_response.get("signedURL") or presigned_response.get("signed_url") or presigned_response.get("signedUrl")
+                upload_url = (
+                    presigned_response.get("signedURL")
+                    or presigned_response.get("signed_url")
+                    or presigned_response.get("signedUrl")
+                )
             else:
                 upload_url = str(presigned_response)
-            
+
             # Replace Docker internal hostname with localhost for browser access
             if upload_url:
                 if "host.docker.internal" in upload_url:
                     upload_url = upload_url.replace("host.docker.internal", "localhost")
                 # Fix double slash in path (e.g., /v1//object/ -> /v1/object/)
                 upload_url = upload_url.replace("/v1//object/", "/v1/object/")
-            
+
             expires_at = datetime.utcnow() + timedelta(minutes=PRESIGNED_URL_EXPIRY_MINUTES)
 
             logger.info(
@@ -248,10 +255,7 @@ class DocumentService:
             )
 
         except Exception as e:
-            logger.error(
-                f"Error creating document for project {project_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Error creating document for project {project_id}: {e}", exc_info=True)
             raise
 
     async def confirm_upload(
@@ -294,16 +298,21 @@ class DocumentService:
             # list() expects a directory path, so we need to split the storage_path
             try:
                 import os
+
                 dir_path = os.path.dirname(storage_path)
                 file_name = os.path.basename(storage_path)
-                
+
                 file_list = self.supabase.storage.from_(STORAGE_BUCKET).list(path=dir_path)
-                
+
                 # Check if the file exists in the listing
-                file_exists = any(f.get('name') == file_name for f in file_list) if file_list else False
-                
+                file_exists = (
+                    any(f.get("name") == file_name for f in file_list) if file_list else False
+                )
+
                 if not file_exists:
-                    logger.warning(f"File not found. Looking for '{file_name}' in '{dir_path}'. Found: {[f.get('name') for f in (file_list or [])]}")
+                    logger.warning(
+                        f"File not found. Looking for '{file_name}' in '{dir_path}'. Found: {[f.get('name') for f in (file_list or [])]}"
+                    )
                     raise Exception(f"File not found in storage: {storage_path}")
             except Exception as e:
                 if "File not found in storage" in str(e):
@@ -329,9 +338,7 @@ class DocumentService:
             # - FastAPI BackgroundTasks
             # - Message queue (Celery, Redis, etc.)
             # - Webhook to external service
-            logger.info(
-                f"Document {document_id} confirmed - TODO: trigger OCR pipeline"
-            )
+            logger.info(f"Document {document_id} confirmed - TODO: trigger OCR pipeline")
 
             return DocumentConfirmResponse(
                 id=updated_doc["id"],
@@ -343,10 +350,7 @@ class DocumentService:
             )
 
         except Exception as e:
-            logger.error(
-                f"Error confirming upload for document {document_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Error confirming upload for document {document_id}: {e}", exc_info=True)
             raise
 
     async def get_document(
@@ -391,15 +395,16 @@ class DocumentService:
                 file_type=doc.get("file_type"),
                 processing_state=DocumentProcessingState(doc["processing_state"]),
                 error_message=doc.get("error_message"),
-                chunk_count=doc.get("document_chunks", [{}])[0].get("count", 0) if doc.get("document_chunks") else 0,
+                chunk_count=(
+                    doc.get("document_chunks", [{}])[0].get("count", 0)
+                    if doc.get("document_chunks")
+                    else 0
+                ),
                 created_at=datetime.fromisoformat(doc["created_at"].replace("Z", "+00:00")),
             )
 
         except Exception as e:
-            logger.error(
-                f"Error getting document {document_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Error getting document {document_id}: {e}", exc_info=True)
             raise
 
     async def delete_document(
@@ -433,9 +438,7 @@ class DocumentService:
             )
 
             if not response.data:
-                raise Exception(
-                    f"Document {document_id} not found or already deleted"
-                )
+                raise Exception(f"Document {document_id} not found or already deleted")
 
             logger.info(f"Soft deleted document {document_id}")
 
@@ -445,10 +448,7 @@ class DocumentService:
             )
 
         except Exception as e:
-            logger.error(
-                f"Error deleting document {document_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Error deleting document {document_id}: {e}", exc_info=True)
             raise
 
     async def get_chunks(
@@ -524,10 +524,7 @@ class DocumentService:
             return chunks, total_count
 
         except Exception as e:
-            logger.error(
-                f"Error getting chunks for document {document_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Error getting chunks for document {document_id}: {e}", exc_info=True)
             raise
 
 

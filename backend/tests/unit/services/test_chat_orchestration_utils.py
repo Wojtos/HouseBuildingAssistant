@@ -8,9 +8,10 @@ Tests pure utility functions used in chat orchestration:
 - _format_chat_history: Formats chat history for LLM context
 """
 
-import pytest
 import json
 from unittest.mock import Mock
+
+import pytest
 
 from app.services.chat_orchestration_service import ChatOrchestrationService
 
@@ -29,7 +30,7 @@ class TestShouldSearchDocuments:
     @pytest.fixture
     def service(self, mock_openrouter_service):
         """Create a ChatOrchestrationService instance for testing.
-        
+
         Uses a mock OpenRouterService since the __init__ accesses mock_mode.
         """
         return ChatOrchestrationService(
@@ -41,62 +42,68 @@ class TestShouldSearchDocuments:
     # Positive cases - should trigger document search
     # ==========================================================================
 
-    @pytest.mark.parametrize("message", [
-        "What does my contract say about payment terms?",
-        "Check if the permit mentions setback requirements",
-        "According to the uploaded documents, what is the timeline?",
-        "Can you find the quote from the contractor?",
-        "What's the estimate for roofing?",
-        "Is there an agreement about warranties?",
-        "What document did I upload about foundations?",
-        "In the file I shared, what does it say?",
-        "The permit application says something about height limits",
-    ])
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "What does my contract say about payment terms?",
+            "Check if the permit mentions setback requirements",
+            "According to the uploaded documents, what is the timeline?",
+            "Can you find the quote from the contractor?",
+            "What's the estimate for roofing?",
+            "Is there an agreement about warranties?",
+            "What document did I upload about foundations?",
+            "In the file I shared, what does it say?",
+            "The permit application says something about height limits",
+        ],
+    )
     def test_trigger_keywords_return_true(self, service, message):
         """Messages containing trigger keywords should return True."""
         result = service._should_search_documents(message)
-        
+
         assert result is True
 
     def test_multiple_trigger_keywords(self, service):
         """Message with multiple trigger keywords should return True."""
         message = "Check the contract and the permit documents I uploaded"
-        
+
         result = service._should_search_documents(message)
-        
+
         assert result is True
 
     # ==========================================================================
     # Negative cases - should NOT trigger document search
     # ==========================================================================
 
-    @pytest.mark.parametrize("message", [
-        # Note: "permits" contains "permit" which is a trigger - use different wording
-        "What building approvals do I need for a deck?",
-        "How much does a roof typically cost?",
-        "What are the building codes in Denver?",
-        "Tell me about foundation types",
-        "How long does construction take?",
-        "What's the best insulation material?",
-        "Hello, can you help me?",
-        "Thank you for your help!",
-    ])
+    @pytest.mark.parametrize(
+        "message",
+        [
+            # Note: "permits" contains "permit" which is a trigger - use different wording
+            "What building approvals do I need for a deck?",
+            "How much does a roof typically cost?",
+            "What are the building codes in Denver?",
+            "Tell me about foundation types",
+            "How long does construction take?",
+            "What's the best insulation material?",
+            "Hello, can you help me?",
+            "Thank you for your help!",
+        ],
+    )
     def test_general_queries_return_false(self, service, message):
         """General queries without trigger keywords should return False."""
         result = service._should_search_documents(message)
-        
+
         assert result is False
 
     def test_empty_message_returns_false(self, service):
         """Empty message should return False."""
         result = service._should_search_documents("")
-        
+
         assert result is False
 
     def test_whitespace_only_returns_false(self, service):
         """Whitespace-only message should return False."""
         result = service._should_search_documents("   \n\t  ")
-        
+
         assert result is False
 
     # ==========================================================================
@@ -106,17 +113,17 @@ class TestShouldSearchDocuments:
     def test_uppercase_trigger_keyword(self, service):
         """Trigger keywords should match case-insensitively."""
         message = "What does my CONTRACT say?"
-        
+
         result = service._should_search_documents(message)
-        
+
         assert result is True
 
     def test_mixed_case_trigger_keyword(self, service):
         """Mixed case trigger keywords should match."""
         message = "Check the Document I uploaded"
-        
+
         result = service._should_search_documents(message)
-        
+
         assert result is True
 
     # ==========================================================================
@@ -127,9 +134,9 @@ class TestShouldSearchDocuments:
         """Trigger keywords as substrings should still match."""
         # "contract" is in "contractor" - this is expected behavior
         message = "I need a contractor recommendation"
-        
+
         result = service._should_search_documents(message)
-        
+
         # "contract" is a substring of "contractor" so this returns True
         # This is the current behavior - document search will find nothing
         assert result is True
@@ -137,9 +144,9 @@ class TestShouldSearchDocuments:
     def test_partial_trigger_at_word_boundary(self, service):
         """Partial matches at word boundaries."""
         message = "I'm documenting my project progress"
-        
+
         result = service._should_search_documents(message)
-        
+
         # "document" is in "documenting"
         assert result is True
 
@@ -147,17 +154,17 @@ class TestShouldSearchDocuments:
         """Very long message with trigger keyword should still match."""
         long_text = "This is a very long message " * 100
         message = long_text + "according to the contract" + long_text
-        
+
         result = service._should_search_documents(message)
-        
+
         assert result is True
 
     def test_trigger_with_special_characters(self, service):
         """Trigger keywords surrounded by special characters should match."""
         message = "What's in the [document]?"
-        
+
         result = service._should_search_documents(message)
-        
+
         assert result is True
 
 
@@ -179,13 +186,13 @@ class TestFormatProjectMemory:
     def test_empty_memory_returns_empty_string(self, service):
         """Empty memory dict should return empty string."""
         result = service._format_project_memory({})
-        
+
         assert result == ""
 
     def test_none_memory_returns_empty_string(self, service):
         """None memory should return empty string."""
         result = service._format_project_memory(None)
-        
+
         assert result == ""
 
     def test_memory_with_empty_domains_returns_empty(self, service):
@@ -194,9 +201,9 @@ class TestFormatProjectMemory:
             "FINANCE_LEGAL": {},
             "LAND_FEASIBILITY": {},
         }
-        
+
         result = service._format_project_memory(memory)
-        
+
         assert result == ""
 
     def test_single_domain_with_data(self, service):
@@ -204,9 +211,9 @@ class TestFormatProjectMemory:
         memory = {
             "FINANCE_LEGAL": {"budget": "$500,000", "loan_type": "construction"},
         }
-        
+
         result = service._format_project_memory(memory)
-        
+
         assert "=== PROJECT MEMORY ===" in result
         assert "FINANCE_LEGAL" in result
         assert "$500,000" in result
@@ -219,9 +226,9 @@ class TestFormatProjectMemory:
             "LAND_FEASIBILITY": {"lot_size": "0.5 acres"},
             "PERMITTING": {},  # Empty, should be excluded
         }
-        
+
         result = service._format_project_memory(memory)
-        
+
         assert "FINANCE_LEGAL" in result
         assert "LAND_FEASIBILITY" in result
         assert "PERMITTING" not in result
@@ -237,16 +244,13 @@ class TestFormatProjectMemory:
             "FINANCE_LEGAL": {"budget": "$500,000"},
             "ARCHITECTURAL_DESIGN": {"style": "modern"},
         }
-        
-        result = service._format_project_memory(
-            memory, 
-            priority_domains=["FINANCE_LEGAL"]
-        )
-        
+
+        result = service._format_project_memory(memory, priority_domains=["FINANCE_LEGAL"])
+
         # FINANCE_LEGAL should appear before other domains in the JSON
         finance_pos = result.find("FINANCE_LEGAL")
         land_pos = result.find("LAND_FEASIBILITY")
-        
+
         assert finance_pos < land_pos
 
     def test_multiple_priority_domains(self, service):
@@ -256,16 +260,15 @@ class TestFormatProjectMemory:
             "FINANCE_LEGAL": {"budget": "$500,000"},
             "ARCHITECTURAL_DESIGN": {"style": "modern"},
         }
-        
+
         result = service._format_project_memory(
-            memory,
-            priority_domains=["ARCHITECTURAL_DESIGN", "FINANCE_LEGAL"]
+            memory, priority_domains=["ARCHITECTURAL_DESIGN", "FINANCE_LEGAL"]
         )
-        
+
         arch_pos = result.find("ARCHITECTURAL_DESIGN")
         finance_pos = result.find("FINANCE_LEGAL")
         land_pos = result.find("LAND_FEASIBILITY")
-        
+
         assert arch_pos < finance_pos < land_pos
 
     def test_priority_domain_not_in_memory(self, service):
@@ -273,12 +276,9 @@ class TestFormatProjectMemory:
         memory = {
             "FINANCE_LEGAL": {"budget": "$500,000"},
         }
-        
-        result = service._format_project_memory(
-            memory,
-            priority_domains=["NONEXISTENT_DOMAIN"]
-        )
-        
+
+        result = service._format_project_memory(memory, priority_domains=["NONEXISTENT_DOMAIN"])
+
         assert "FINANCE_LEGAL" in result
         assert "$500,000" in result
 
@@ -293,9 +293,9 @@ class TestFormatProjectMemory:
         memory = {
             "FINANCE_LEGAL": {"large_field": large_value},
         }
-        
+
         result = service._format_project_memory(memory, max_tokens=100)
-        
+
         assert "... (truncated)" in result
         # Result should be shorter than the original
         assert len(result) < len(large_value)
@@ -305,9 +305,9 @@ class TestFormatProjectMemory:
         memory = {
             "FINANCE_LEGAL": {"budget": "$500,000"},
         }
-        
+
         result = service._format_project_memory(memory, max_tokens=50)
-        
+
         assert "=== PROJECT MEMORY ===" in result
         # May or may not be truncated depending on actual size
 
@@ -325,9 +325,9 @@ class TestFormatProjectMemory:
                 }
             },
         }
-        
+
         result = service._format_project_memory(memory)
-        
+
         assert "primary" in result
         assert "$400,000" in result
 
@@ -338,9 +338,9 @@ class TestFormatProjectMemory:
                 "contractors": ["ABC Builders", "XYZ Construction"],
             },
         }
-        
+
         result = service._format_project_memory(memory)
-        
+
         assert "ABC Builders" in result
         assert "XYZ Construction" in result
 
@@ -359,7 +359,7 @@ class TestFormatDocuments:
     def test_empty_documents_returns_empty_string(self, service):
         """Empty document list should return empty string."""
         result = service._format_documents([])
-        
+
         assert result == ""
 
     def test_single_document_formatting(self, service):
@@ -373,9 +373,9 @@ class TestFormatDocuments:
                 "upload_date": "2024-01-15",
             }
         ]
-        
+
         result = service._format_documents(documents)
-        
+
         assert "=== RETRIEVED DOCUMENTS ===" in result
         assert "contract.pdf" in result
         assert "Payment terms are net 30." in result
@@ -399,9 +399,9 @@ class TestFormatDocuments:
                 "chunk_index": 1,
             },
         ]
-        
+
         result = service._format_documents(documents)
-        
+
         assert "Document 1:" in result
         assert "Document 2:" in result
 
@@ -412,9 +412,9 @@ class TestFormatDocuments:
                 "content": "Some content",
             }
         ]
-        
+
         result = service._format_documents(documents)
-        
+
         assert "Unknown" in result  # Default source
         assert "Some content" in result
 
@@ -427,9 +427,9 @@ class TestFormatDocuments:
                 "similarity": 0.9,
             }
         ]
-        
+
         result = service._format_documents(documents)
-        
+
         assert "Cite document sources" in result
 
 
@@ -447,17 +447,15 @@ class TestFormatChatHistory:
     def test_empty_history_returns_empty_string(self, service):
         """Empty history should return empty string."""
         result = service._format_chat_history([])
-        
+
         assert result == ""
 
     def test_single_message_formatting(self, service):
         """Single message should format with capitalized role."""
-        history = [
-            {"role": "user", "content": "Hello!"}
-        ]
-        
+        history = [{"role": "user", "content": "Hello!"}]
+
         result = service._format_chat_history(history)
-        
+
         assert "User: Hello!" in result
 
     def test_multiple_messages_formatting(self, service):
@@ -466,9 +464,9 @@ class TestFormatChatHistory:
             {"role": "user", "content": "What permits do I need?"},
             {"role": "assistant", "content": "For a deck, you'll need..."},
         ]
-        
+
         result = service._format_chat_history(history)
-        
+
         assert "User: What permits do I need?" in result
         assert "Assistant: For a deck, you'll need..." in result
         # Check they're on separate lines
@@ -481,8 +479,8 @@ class TestFormatChatHistory:
             {},  # Empty dict
             {"role": "user"},  # Missing content
         ]
-        
+
         result = service._format_chat_history(history)
-        
+
         # Should not raise, should use defaults
         assert "Unknown:" in result or "User:" in result

@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from app.schemas.common import PaginationInfo, PaginationParams
 
-
 # =============================================================================
 # TYPE ALIASES
 # =============================================================================
@@ -28,13 +27,15 @@ ProjectMemoryData = dict[str, Any]
 # QUERY PARAMETERS
 # =============================================================================
 
+
 class MemoryAuditListParams(PaginationParams):
     """
     Memory audit trail list query parameters.
-    
+
     GET /api/projects/{project_id}/memory/audit query params
     Uses standard pagination parameters.
     """
+
     pass
 
 
@@ -42,24 +43,24 @@ class MemoryAuditListParams(PaginationParams):
 # RESPONSE DTOs
 # =============================================================================
 
+
 class ProjectMemoryResponse(BaseModel):
     """
     Project memory response DTO.
-    
+
     GET /api/projects/{project_id}/memory response
     Derived from: ProjectMemory model in app/db/models.py
-    
+
     The data field contains a flexible JSONB structure organized by categories:
     - FINANCE: Budget, currency, loan information
     - PERMITTING: Zoning, setbacks, permit status
     - DESIGN: Architectural preferences, room counts
     - etc.
     """
+
     id: UUID = Field(description="Memory record unique identifier")
     project_id: UUID = Field(description="Associated project ID")
-    data: ProjectMemoryData = Field(
-        description="Structured memory data organized by category"
-    )
+    data: ProjectMemoryData = Field(description="Structured memory data organized by category")
     updated_at: datetime = Field(description="Last update timestamp")
 
     class Config:
@@ -69,10 +70,11 @@ class ProjectMemoryResponse(BaseModel):
 class MemoryAuditItem(BaseModel):
     """
     Memory audit trail item DTO.
-    
+
     Individual entry in the audit trail list.
     Derived from: MemoryAuditTrail model in app/db/models.py
     """
+
     id: UUID = Field(description="Audit entry unique identifier")
     project_id: UUID = Field(description="Associated project ID")
     agent_id: Optional[str] = Field(
@@ -100,9 +102,10 @@ class MemoryAuditItem(BaseModel):
 class MemoryAuditListResponse(BaseModel):
     """
     Paginated memory audit trail response.
-    
+
     GET /api/projects/{project_id}/memory/audit response
     """
+
     data: list[MemoryAuditItem] = Field(description="List of audit entries")
     pagination: PaginationInfo = Field(description="Pagination metadata")
 
@@ -111,29 +114,29 @@ class MemoryAuditListResponse(BaseModel):
 # REQUEST COMMAND MODELS
 # =============================================================================
 
+
 class ProjectMemoryUpdateRequest(BaseModel):
     """
     Project memory update command model.
-    
+
     PATCH /api/projects/{project_id}/memory request
     Derived from: ProjectMemoryUpdate model + audit metadata
-    
+
     Note: Uses deep merge with existing data. New keys are added,
     existing keys are updated, but keys are not deleted.
-    
+
     Validation:
     - data must be a valid JSON object
     - JSON Schema validation performed for critical fields:
       - Budget must be numeric if present
       - Dates must be valid ISO8601 format
       - Enum fields must match allowed values
-    
+
     Side Effects:
     - Creates a memory_audit_trail record with previous and new data
     """
-    data: ProjectMemoryData = Field(
-        description="Memory data to merge with existing data"
-    )
+
+    data: ProjectMemoryData = Field(description="Memory data to merge with existing data")
     agent_id: Optional[str] = Field(
         default=None,
         description="AI agent making the change (for audit purposes)",
@@ -142,4 +145,3 @@ class ProjectMemoryUpdateRequest(BaseModel):
         default=None,
         description="Human-readable description of the change",
     )
-
