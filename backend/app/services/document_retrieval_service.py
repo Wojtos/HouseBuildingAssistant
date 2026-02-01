@@ -266,9 +266,9 @@ def get_document_retrieval_service() -> DocumentRetrievalService:
     Note: Creates clients internally to avoid circular dependencies.
     """
     from app.clients.ai_client import get_ai_client
-    from app.db import supabase_client
+    from app.db import get_supabase_client
 
     return DocumentRetrievalService(
-        supabase=supabase_client,
+        supabase=get_supabase_client(),
         ai_client=get_ai_client(),
     )
