@@ -81,10 +81,13 @@ lint-check: ## Check linting without fixing (for CI)
 	cd backend && pipx run black --check --diff .
 	@echo "Checking Python imports with isort..."
 	cd backend && pipx run isort --check-only --diff .
+	@echo "Generating Astro types..."
+	cd frontend && npx astro sync
 	@echo "Checking TypeScript types..."
 	cd frontend && npx tsc --noEmit
 
 lint-typescript: ## Run TypeScript type checking
+	cd frontend && npx astro sync
 	cd frontend && npx tsc --noEmit
 
 # =============================================================================
