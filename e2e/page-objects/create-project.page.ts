@@ -81,16 +81,12 @@ export class CreateProjectPage {
    * Waits for the button to be enabled before clicking (React state updates are async)
    */
   async submit(): Promise<void> {
-    // Wait for button to be enabled (form validation completes after state updates)
+    // Wait for button to be visible first
     await this.submitButton.waitFor({ state: 'visible' });
-    await this.page.waitForFunction(
-      (selector) => {
-        const button = document.querySelector(selector) as HTMLButtonElement;
-        return button && !button.disabled;
-      },
-      'button[type="submit"]:not([data-cancel])',
-      { timeout: 5000 }
-    );
+    
+    // Wait for button to be enabled with longer timeout for CI environments
+    await expect(this.submitButton).toBeEnabled({ timeout: 10000 });
+    
     await this.submitButton.click();
   }
 

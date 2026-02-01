@@ -216,8 +216,8 @@ test.describe('Create Project Form Validation', () => {
     const projectName = `E2E Loading Test ${Date.now()}`;
     await createProjectPage.fillName(projectName);
 
-    // Act: Submit and check for loading state
-    await createProjectPage.submitButton.click();
+    // Act: Submit using the page object method (waits for button to be enabled)
+    await createProjectPage.submit();
 
     // Assert: Button should show loading text (may be brief)
     // Note: This test captures the submitting state if network is slow enough

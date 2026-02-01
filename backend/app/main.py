@@ -13,6 +13,9 @@ app = FastAPI(
     title=settings.api_title,
     description="Backend API for HomeBuild AI Assistant",
     version=settings.api_version,
+    # Disable automatic trailing slash redirects to avoid CORS issues
+    # FastAPI's 307 redirects don't work well with CORS preflight requests
+    redirect_slashes=False,
 )
 
 # CORS middleware configuration
