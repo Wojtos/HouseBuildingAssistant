@@ -72,15 +72,15 @@ lint: lint-python lint-typescript ## Run all linters
 
 lint-python: ## Lint Python code with Black and isort
 	@echo "Formatting Python code with Black..."
-	cd backend && black .
+	cd backend && pipx run black .
 	@echo "Sorting Python imports with isort..."
-	cd backend && isort .
+	cd backend && pipx run isort .
 
 lint-check: ## Check linting without fixing (for CI)
 	@echo "Checking Python formatting with Black..."
-	cd backend && black --check --diff .
+	cd backend && pipx run black --check --diff .
 	@echo "Checking Python imports with isort..."
-	cd backend && isort --check-only --diff .
+	cd backend && pipx run isort --check-only --diff .
 	@echo "Checking TypeScript types..."
 	cd frontend && npx tsc --noEmit
 
