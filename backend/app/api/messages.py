@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from supabase import Client
 
 from app.api.dependencies import get_current_user, get_openrouter_service, verify_project_ownership
@@ -154,46 +154,6 @@ async def list_messages(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-async def _extract_facts_background(
-    project_id: UUID,
-    user_message: str,
-    assistant_response: str,
-    openrouter_service: OpenRouterService,
-    memory_service: ProjectMemoryService,
-):
-    """
-    Background task to extract facts from conversation.
-
-    This runs asynchronously after the response is returned to the user,
-    avoiding timeout issues from sequential API calls.
-    """
-    try:
-        fact_service = get_fact_extraction_service(
-            openrouter_service=openrouter_service,
-            memory_service=memory_service,
-        )
-
-        extraction_result = await fact_service.extract_facts(
-            user_message=user_message,
-            assistant_response=assistant_response,
-            source="conversation",
-        )
-
-        if extraction_result.has_facts:
-            logger.info(
-                f"Background fact extraction for project {project_id}: "
-                f"extracted {len(extraction_result.facts)} facts"
-            )
-            # Note: Facts are extracted but need user confirmation before storing
-            # The frontend will need to fetch pending facts separately
-        else:
-            logger.debug(f"No facts extracted for project {project_id}")
-
-    except Exception as e:
-        # Log but don't fail - this is a background task
-        logger.warning(f"Background fact extraction failed for project {project_id}: {e}")
-
-
 @router.post(
     "/{project_id}/chat",
     response_model=ChatResponse,
@@ -215,7 +175,6 @@ async def _extract_facts_background(
 async def send_message(
     project_id: UUID,
     request: ChatRequest,
-    background_tasks: BackgroundTasks,
     user_id: UUID = Depends(get_current_user),
     project: Project = Depends(verify_project_ownership),
     openrouter_service: OpenRouterService = Depends(get_openrouter_service),
@@ -238,8 +197,8 @@ async def send_message(
     3. Routes to appropriate specialized agent
     4. Generates AI response with full context
     5. Stores assistant message
-    6. Returns response with routing metadata
-    7. (Background) Extracts facts for user confirmation
+    6. Extracts facts for user confirmation
+    7. Returns response with routing metadata and extracted facts
 
     **RAG Features:**
     - Semantic document search for relevant information
@@ -263,22 +222,26 @@ async def send_message(
         document_service = get_document_retrieval_service()
         memory_service = get_project_memory_service(supabase)
         project_context_service = get_project_context_service(supabase)  # UC-0
+        fact_extraction_service = get_fact_extraction_service(  # UC-3
+            openrouter_service=openrouter_service,
+            memory_service=memory_service,
+        )
         web_search_service = get_web_search_service(  # UC-2
             openrouter_service=openrouter_service,
         )
 
-        # Create orchestration service WITHOUT fact extraction (moved to background)
+        # Create orchestration service with all RAG services
         chat_service = get_chat_orchestration_service(
             openrouter_service=openrouter_service,
             message_service=message_service,
             document_service=document_service,
             memory_service=memory_service,
             project_context_service=project_context_service,  # UC-0
-            fact_extraction_service=None,  # Disabled - will run in background
+            fact_extraction_service=fact_extraction_service,  # UC-3
             web_search_service=web_search_service,  # UC-2
         )
 
-        # Process chat with timeout (60 seconds to allow for web search + routing + response)
+        # Process chat with timeout (60 seconds to allow for all operations)
         response = await asyncio.wait_for(
             chat_service.process_chat(
                 project_id=project_id,
@@ -290,16 +253,6 @@ async def send_message(
 
         logger.info(
             f"Chat processed for project {project_id}, agent: {response['agent_id']} (with RAG)"
-        )
-
-        # Schedule fact extraction as background task (non-blocking)
-        background_tasks.add_task(
-            _extract_facts_background,
-            project_id=project_id,
-            user_message=request.content,
-            assistant_response=response["content"],
-            openrouter_service=openrouter_service,
-            memory_service=memory_service,
         )
 
         return ChatResponse(**response)

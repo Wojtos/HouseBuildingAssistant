@@ -254,6 +254,13 @@ export function ProjectShell({
       <main id="main-content" className="flex-1">
         {children}
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 bg-white py-4">
+        <p className="text-center text-xs text-gray-400">
+          Made by Wojciech Gruszka
+        </p>
+      </footer>
     </div>
   );
 }
