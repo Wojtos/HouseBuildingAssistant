@@ -197,7 +197,8 @@ async def send_message(
     3. Routes to appropriate specialized agent
     4. Generates AI response with full context
     5. Stores assistant message
-    6. Returns response with routing metadata
+    6. Extracts facts for user confirmation
+    7. Returns response with routing metadata and extracted facts
 
     **RAG Features:**
     - Semantic document search for relevant information
@@ -206,7 +207,7 @@ async def send_message(
 
     **Constraints:**
     - Maximum content length: 4000 characters
-    - Maximum response time: 30 seconds
+    - Maximum response time: 60 seconds
 
     **Example:**
     ```
@@ -229,7 +230,7 @@ async def send_message(
             openrouter_service=openrouter_service,
         )
 
-        # Create orchestration service with OpenRouterService
+        # Create orchestration service with all RAG services
         chat_service = get_chat_orchestration_service(
             openrouter_service=openrouter_service,
             message_service=message_service,
@@ -240,18 +241,18 @@ async def send_message(
             web_search_service=web_search_service,  # UC-2
         )
 
-        # Process chat with timeout (30 seconds max to allow for retries)
+        # Process chat with timeout (60 seconds to allow for all operations)
         response = await asyncio.wait_for(
             chat_service.process_chat(
                 project_id=project_id,
                 user_id=user_id,
                 content=request.content,
             ),
-            timeout=30.0,
+            timeout=60.0,
         )
 
         logger.info(
-            f"Chat processed for project {project_id}, " f"agent: {response['agent_id']} (with RAG)"
+            f"Chat processed for project {project_id}, agent: {response['agent_id']} (with RAG)"
         )
 
         return ChatResponse(**response)

@@ -222,12 +222,12 @@ class ChatOrchestrationService:
                 context=context,
             )
 
-            # Step 5: Extract facts (UC-3)
+            # Step 5: Extract facts (UC-3) - only if service is provided
+            # Note: Fact extraction is now typically run as a background task
+            # to avoid timeout issues, so this may be None
             extracted_facts = None
-            logger.info(
-                f"=== UC-3 FACT EXTRACTION === service={'present' if self.fact_extraction_service else 'NONE'}"
-            )
             if self.fact_extraction_service:
+                logger.debug("Running inline fact extraction (UC-3)")
                 try:
                     extraction_result = await self.fact_extraction_service.extract_facts(
                         user_message=content,
