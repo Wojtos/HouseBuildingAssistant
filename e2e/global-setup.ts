@@ -34,8 +34,8 @@ if (!envLoaded) {
   console.warn('⚠️ Could not find .env.test file. Tried:', envPaths);
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '';
+const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL || 'http://localhost:54321';
+const SUPABASE_ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY || '';
 const E2E_USERNAME = process.env.E2E_USERNAME || '';
 const E2E_PASSWORD = process.env.E2E_PASSWORD || '';
 
