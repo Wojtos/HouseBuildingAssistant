@@ -1,4 +1,4 @@
-.PHONY: help install dev build up down stop clean logs backend frontend test
+.PHONY: help install dev build up down stop clean logs backend frontend test e2e e2e-ui e2e-headed e2e-report
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -41,4 +41,16 @@ frontend: ## Start only the frontend service
 
 test: ## Run tests (placeholder for future implementation)
 	@echo "Tests not yet implemented"
+
+e2e: ## Run E2E tests with Playwright (requires backend running)
+	npm run test:e2e
+
+e2e-ui: ## Run E2E tests in UI mode
+	npm run test:e2e:ui
+
+e2e-headed: ## Run E2E tests with visible browser
+	npm run test:e2e:headed
+
+e2e-report: ## Show last E2E test report
+	npm run test:e2e:report
 

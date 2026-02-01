@@ -1,5 +1,20 @@
 {
+  "name": "house-building-assistant",
+  "version": "1.0.0",
+  "description": "AI-powered guide for homeowners building a house",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@types/node": "^22.13.0",
+    "dotenv": "^16.4.7"
   }
 }

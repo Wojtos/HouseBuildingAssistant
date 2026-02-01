@@ -30,6 +30,7 @@ wheels/
 .env.local
 .env.*.local
 .env.production
+.env.test
 
 # IDE
 .vscode/
@@ -68,3 +69,6 @@ htmlcov/
 *.temp
 .cache/
 
+# Playwright
+/playwright-report/
+/test-results/
