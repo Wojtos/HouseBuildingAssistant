@@ -58,6 +58,8 @@ lerna-debug.log*
 .hypothesis/
 *.cover
 htmlcov/
+coverage-*.xml
+coverage-*-html/
 
 # Docker
 *.pid
