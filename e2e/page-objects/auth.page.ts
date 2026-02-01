@@ -49,10 +49,22 @@ export class AuthPage {
 
   /**
    * Fill login credentials
+   * Waits for React hydration to complete before filling
    */
   async fillCredentials(email: string, password: string): Promise<void> {
+    // Wait for the form inputs to be ready (React hydration complete)
+    await this.emailInput.waitFor({ state: 'visible' });
+    await this.passwordInput.waitFor({ state: 'visible' });
+    
+    // Click to focus first to ensure React event handlers are attached
+    await this.emailInput.click();
     await this.emailInput.fill(email);
+    
+    await this.passwordInput.click();
     await this.passwordInput.fill(password);
+    
+    // Wait a moment for React state to update after filling
+    await this.page.waitForTimeout(100);
   }
 
   /**
