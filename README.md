@@ -2,6 +2,8 @@
 
 An AI-powered assistant for home building projects, from plot selection to furnishing.
 
+Try it out - https://homebuild-frontend.fly.dev/ 
+
 An example of usage:
 <video src="https://github.com/user-attachments/assets/9b4e8b31-711d-40fc-8ae7-a6e3295e7a0d" controls="controls" style="max-width: 100%;">
 </video>
