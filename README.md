@@ -2,6 +2,11 @@
 
 An AI-powered assistant for home building projects, from plot selection to furnishing.
 
+An example of usage:
+https://github.com/user-attachments/assets/9b4e8b31-711d-40fc-8ae7-a6e3295e7a0d
+
+
+
 ## Project Structure
 
 ```
